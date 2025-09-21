@@ -96,6 +96,7 @@ services:
     image: quay.io/keycloak/keycloak:26.3.4
     command:
       - start-dev
+      - --import-realm
     ports:
       - "8081:8080"
     environment:
@@ -108,6 +109,8 @@ services:
       - KC_DB_PASSWORD=${KEYCLOAK_DB_PASSWORD}
       - KC_DB_URL=${KEYCLOAK_DB_URL}
       - KC_HEALTH_ENABLED=true
+    volumes:
+      - ./keycloak:/opt/keycloak/data/import
     depends_on:
       keycloak-db:
         condition: service_healthy
