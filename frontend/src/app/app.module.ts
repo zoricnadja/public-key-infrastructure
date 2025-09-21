@@ -11,10 +11,11 @@ import {
 import { initializeKeycloak } from './auth/keycloak-init.factory';
 import { HTTP_INTERCEPTORS } from '@angular/common/http';
 import { AuthModule } from './auth/auth.module';
+import { PagesModule } from './pages/pages.module';
 
 @NgModule({
   declarations: [AppComponent],
-  imports: [BrowserModule, AppRoutingModule, KeycloakAngularModule, AuthModule],
+  imports: [BrowserModule, AppRoutingModule, KeycloakAngularModule, AuthModule, PagesModule],
   providers: [
     {
       provide: APP_INITIALIZER,
