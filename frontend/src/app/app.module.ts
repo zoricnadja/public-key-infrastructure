@@ -9,7 +9,7 @@ import {
   KeycloakService,
 } from 'keycloak-angular';
 import { initializeKeycloak } from './auth/keycloak-init.factory';
-import { HTTP_INTERCEPTORS } from '@angular/common/http';
+import { HTTP_INTERCEPTORS, provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
 import { AuthModule } from './auth/auth.module';
 import { PagesModule } from './pages/pages.module';
 
@@ -17,6 +17,7 @@ import { PagesModule } from './pages/pages.module';
   declarations: [AppComponent],
   imports: [BrowserModule, AppRoutingModule, KeycloakAngularModule, AuthModule, PagesModule],
   providers: [
+    provideHttpClient(withInterceptorsFromDi()),
     {
       provide: APP_INITIALIZER,
       useFactory: initializeKeycloak,
