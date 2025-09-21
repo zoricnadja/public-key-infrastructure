@@ -1,12 +1,15 @@
 import { KeycloakService } from 'keycloak-angular';
+import { environment } from '../../enviroment/environment';
+
+const keycloakConfig = environment.keycloak;
 
 export function initializeKeycloak(keycloak: KeycloakService) {
   return () =>
     keycloak.init({
       config: {
-        url: 'http://localhost:8081',
-        realm: 'pki',
-        clientId: 'pki-frontend',
+        url: keycloakConfig.url,
+        realm: keycloakConfig.realm,
+        clientId: keycloakConfig.clientId,
       },
       initOptions: {
         onLoad: 'login-required',
