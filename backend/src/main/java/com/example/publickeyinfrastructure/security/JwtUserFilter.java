@@ -36,7 +36,8 @@ public class JwtUserFilter extends OncePerRequestFilter {
                 String keycloakId = String.valueOf(token.getTokenAttributes().get("sub"));
                 String firstName = String.valueOf(token.getTokenAttributes().get("given_name"));
                 String lastName = String.valueOf(token.getTokenAttributes().get("family_name"));
-                this.userService.save(new User(null, keycloakId, email, firstName, lastName));
+                String organization = String.valueOf(token.getTokenAttributes().get("organization"));
+                this.userService.save(new User(null, keycloakId, email, firstName, lastName, organization));
             }
         } catch (Exception e) {
             throw new IllegalArgumentException("Unable to save user");
