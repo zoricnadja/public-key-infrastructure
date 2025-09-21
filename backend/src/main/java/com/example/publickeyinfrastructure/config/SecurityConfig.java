@@ -9,15 +9,23 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 
+import com.example.publickeyinfrastructure.security.JwtUserFilter;
 import com.example.publickeyinfrastructure.security.KeycloakRoleConverter;
 
 @Configuration
 @EnableMethodSecurity
 public class SecurityConfig {
 
-    @Autowired
     private KeycloakRoleConverter keycloakRoleConverter;
+    private JwtUserFilter jwtUserFilter;
+
+    @Autowired
+    public SecurityConfig(KeycloakRoleConverter keycloakRoleConverter, JwtUserFilter jwtUserFilter) {
+        this.keycloakRoleConverter = keycloakRoleConverter;
+        this.jwtUserFilter = jwtUserFilter;
+    }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -34,7 +42,8 @@ public class SecurityConfig {
             )
             .oauth2ResourceServer(oauth2 -> oauth2
                 .jwt(jwt -> jwt.jwtAuthenticationConverter(keycloakRoleConverter))
-            );
+            )
+            .addFilterBefore(jwtUserFilter, BasicAuthenticationFilter.class);
         return http.build();
     }
 }
