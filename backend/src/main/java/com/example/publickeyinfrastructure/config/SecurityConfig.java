@@ -37,6 +37,7 @@ public class SecurityConfig {
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
             .authorizeHttpRequests(authorize -> authorize
+                .requestMatchers("/actuator/health").permitAll()
                 .requestMatchers("/public/**").permitAll() // TODO: Adjust public endpoints
                 .anyRequest().authenticated()
             )
