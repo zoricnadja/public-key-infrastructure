@@ -115,7 +115,7 @@ public class CertificateService {
             case CA_USER ->
                 // CA korisnik samo iz svoje organizacije
                     certificateRepository.findValidCAForAdminAndCA(allowedTypes, user.getOrganization());
-            case REGULAR_USER ->
+            case USER ->
                 // Običan korisnik samo za End-Entity (koristi custom query)
                     certificateRepository.findValidCAForRegularUser(user.getOrganization());
             default -> List.of();
