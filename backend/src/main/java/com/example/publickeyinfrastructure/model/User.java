@@ -2,6 +2,8 @@ package com.example.publickeyinfrastructure.model;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -36,4 +38,7 @@ public class User {
 
     @Column
     private String organization;
+
+    @Enumerated(EnumType.STRING)
+    private Role role;
 }
