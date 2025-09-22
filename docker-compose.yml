@@ -114,7 +114,8 @@ services:
       - MAIL_USER=${MAIL_USER}
       - MAIL_PASSWORD=${MAIL_PASSWORD}
     volumes:
-      - ./keycloak:/opt/keycloak/data/import
+      - ./keycloak/realm-export:/opt/keycloak/data/import
+      - ./keycloak/providers:/opt/keycloak/providers
     depends_on:
       keycloak-db:
         condition: service_healthy

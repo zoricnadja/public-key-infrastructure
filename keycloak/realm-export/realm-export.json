@@ -448,7 +448,7 @@
   "requiredCredentials": [
     "password"
   ],
-  "passwordPolicy": "length(8) and maxLength(64)",
+  "passwordPolicy": "length(8) and maxLength(64) and specialChars(1) and upperCase(1) and digits(1) and notPwned(undefined)",
   "otpPolicyType": "totp",
   "otpPolicyAlgorithm": "HmacSHA1",
   "otpPolicyInitialCounter": 0,
@@ -800,8 +800,8 @@
       "fullScopeAllowed": true,
       "nodeReRegistrationTimeout": -1,
       "defaultClientScopes": [
-        "custom-claims",
         "web-origins",
+        "custom-claims",
         "acr",
         "profile",
         "roles",
