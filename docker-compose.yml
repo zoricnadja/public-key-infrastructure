@@ -97,8 +97,11 @@ services:
     command:
       - start-dev
       - --import-realm
+      - --https-key-store-file=/opt/keycloak/conf/keycloak-keystore.p12
+      - --https-key-store-password=password
     ports:
       - "8081:8080"
+      - "8443:8443"
     environment:
       - KEYCLOAK_ADMIN=${KEYCLOAK_ADMIN}
       - KEYCLOAK_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD}
@@ -116,6 +119,7 @@ services:
     volumes:
       - ./keycloak/realm-export:/opt/keycloak/data/import
       - ./keycloak/providers:/opt/keycloak/providers
+      - ./keycloak/keycloak-keystore.p12:/opt/keycloak/conf/keycloak-keystore.p12
     depends_on:
       keycloak-db:
         condition: service_healthy
