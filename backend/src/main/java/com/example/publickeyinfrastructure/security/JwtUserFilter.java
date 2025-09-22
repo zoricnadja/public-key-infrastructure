@@ -1,14 +1,20 @@
 package com.example.publickeyinfrastructure.security;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
-
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import com.example.publickeyinfrastructure.model.Role;
 import com.example.publickeyinfrastructure.model.User;
 import com.example.publickeyinfrastructure.service.UserService;
 
@@ -30,26 +36,45 @@ public class JwtUserFilter extends OncePerRequestFilter {
     }
     
     @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
-            throws ServletException, IOException {
-        try {
-            JwtAuthenticationToken token = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
+        
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        
+        if (authentication instanceof JwtAuthenticationToken jwtAuth) {
+            Jwt jwt = jwtAuth.getToken();
 
-            String email = String.valueOf(token.getTokenAttributes().get("email"));
+            String email = jwt.getClaim("email");
             Optional<User> userOpt = this.userService.findByEmail(email);
 
             if (userOpt.isEmpty()) {
-                String keycloakId = String.valueOf(token.getTokenAttributes().get("sub"));
-                String firstName = String.valueOf(token.getTokenAttributes().get("given_name"));
-                String lastName = String.valueOf(token.getTokenAttributes().get("family_name"));
-                String organization = String.valueOf(token.getTokenAttributes().get("organization"));
-                this.userService.save(new User(null, keycloakId, email, firstName, lastName, organization));
+                List<String> roles = extractRoles(jwt);
+                Role role = roles.stream()
+                        .map(Role::fromString)
+                        .filter(opt -> opt.isPresent())
+                        .map(opt -> opt.get())
+                        .findFirst()
+                        .orElse(Role.USER);
+
+                String keycloakId = jwt.getClaim("sub");
+                String firstName = jwt.getClaim("given_name");
+                String lastName = jwt.getClaim("family_name");
+                String organization = jwt.getClaim("organization");
+                this.userService.save(new User(null, keycloakId, email, firstName, lastName, organization, role));
             }
-        } catch (Exception e) {
-            throw new IllegalArgumentException("Unable to save user");
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    private List<String> extractRoles(Jwt jwt) {
+        List<String> roles = new ArrayList<>();
+
+        Map<String, Object> realmAccess = jwt.getClaim("realm_access");
+        if (realmAccess != null && realmAccess.containsKey("roles")) {
+            roles.addAll((Collection<String>) realmAccess.get("roles"));
+        }
+
+        return roles;
     }
 
 }
