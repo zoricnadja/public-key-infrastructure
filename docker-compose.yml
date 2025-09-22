@@ -109,6 +109,10 @@ services:
       - KC_DB_PASSWORD=${KEYCLOAK_DB_PASSWORD}
       - KC_DB_URL=${KEYCLOAK_DB_URL}
       - KC_HEALTH_ENABLED=true
+      - MAIL_HOST=${MAIL_HOST}
+      - MAIL_PORT=${MAIL_PORT}
+      - MAIL_USER=${MAIL_USER}
+      - MAIL_PASSWORD=${MAIL_PASSWORD}
     volumes:
       - ./keycloak:/opt/keycloak/data/import
     depends_on:
