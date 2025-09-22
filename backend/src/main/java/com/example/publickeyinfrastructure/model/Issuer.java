@@ -1,5 +1,13 @@
 package com.example.publickeyinfrastructure.model;
 
+import com.example.publickeyinfrastructure.mapper.X500NameBuilder;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -13,8 +21,44 @@ import java.security.PublicKey;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-public class Issuer {
+@Entity
+@Table(name = "issuers")
+public class Issuer implements HasX500Fields{
     private PrivateKey privateKey;
     private PublicKey publicKey;
-    private X500Name x500Name;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column
+    private String privateKeyAlgorithm;
+
+    @Column
+    private String publicKeyAlgorithm;
+
+    @Column
+    private String commonName;
+
+    @Column
+    private String organization;
+
+    @Column
+    private String organizationalUnit;
+
+    @Column
+    private String country;
+
+    @Column
+    private String state;
+
+    @Column
+    private String locality;
+
+    @Column
+    private String email;
+
+    @Transient
+    public X500Name getX500Name() {
+        return X500NameBuilder.buildX500Name(this);
+    }
 }
