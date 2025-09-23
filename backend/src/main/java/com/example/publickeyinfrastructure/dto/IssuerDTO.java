@@ -4,13 +4,11 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-import java.security.PublicKey;
-
 @NoArgsConstructor
 @AllArgsConstructor
 @Getter
 public class IssuerDTO {
-    private PublicKey publicKey;
+    private String publicKey;
     private String commonName;
     private String email;
     private String country;
