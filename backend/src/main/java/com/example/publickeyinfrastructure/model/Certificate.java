@@ -1,5 +1,6 @@
 package com.example.publickeyinfrastructure.model;
 
+import com.example.publickeyinfrastructure.util.KeyUtil;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -24,17 +25,10 @@ import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo;
 import org.bouncycastle.cert.X509v3CertificateBuilder;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
-import org.springframework.beans.factory.annotation.Value;
 
-import javax.crypto.Cipher;
-import javax.crypto.spec.GCMParameterSpec;
-import javax.crypto.spec.SecretKeySpec;
 import java.math.BigInteger;
 import java.security.cert.X509Certificate;
 import java.security.PublicKey;
-import java.security.spec.X509EncodedKeySpec;
-import java.security.KeyFactory;
-import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
@@ -48,8 +42,6 @@ import java.util.List;
 @Table(name = "certificates")
 public class Certificate {
 
-    private static final int IV_LENGTH = 12;
-    private static final int TAG_LENGTH = 16;
     private static String encryptionKey = "ChangeThisEncryptionKeyToBeAtLeast32Chars!aaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 
 
@@ -92,7 +84,7 @@ public class Certificate {
     private byte[] signature;
 
     @Lob
-    @Column(name = "encrypted_public_key")
+    @Column
     private byte[] encryptedPublicKey;
 
     @Column
@@ -109,22 +101,11 @@ public class Certificate {
         return issued.compareTo(now) <= 0 && expires.compareTo(now) > 0;
     }
 
-    public PublicKey getPublicKey() {
-        if (publicKey == null && encryptedPublicKey != null) {
-            try {
-                publicKey = decryptPublicKey(encryptedPublicKey);
-            } catch (Exception e) {
-                throw new RuntimeException("Failed to decrypt public key", e);
-            }
-        }
-        return publicKey;
-    }
-
     public void setPublicKey(PublicKey publicKey) {
         this.publicKey = publicKey;
         if (publicKey != null) {
             try {
-                this.encryptedPublicKey = encryptPublicKey(publicKey);
+                this.encryptedPublicKey = KeyUtil.encryptPublicKey(publicKey, encryptionKey);
                 if (this.publicKeyAlgorithm == null) {
                     this.publicKeyAlgorithm = publicKey.getAlgorithm();
                 }
@@ -134,64 +115,17 @@ public class Certificate {
         }
     }
 
-    private byte[] encryptPublicKey(PublicKey publicKey) throws Exception {
-        return encrypt(publicKey.getEncoded());
-    }
-
-    private PublicKey decryptPublicKey(byte[] encryptedKey) throws Exception {
-        byte[] decryptedBytes = decrypt(encryptedKey);
-        X509EncodedKeySpec keySpec = new X509EncodedKeySpec(decryptedBytes);
-        KeyFactory keyFactory = KeyFactory.getInstance(publicKeyAlgorithm != null ? publicKeyAlgorithm : "RSA");
-        return keyFactory.generatePublic(keySpec);
-    }
-    private byte[] encrypt(byte[] data) throws Exception {
-        if (encryptionKey == null || encryptionKey.length() < 32) {
-            throw new IllegalStateException("Encryption key must be at least 32 characters long");
+    public PublicKey getPublicKey() {
+        if (publicKey == null && encryptedPublicKey != null) {
+            try {
+                publicKey = KeyUtil.decryptPublicKey(encryptedPublicKey, encryptionKey, publicKeyAlgorithm);
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to decrypt public key", e);
+            }
         }
-
-        byte[] keyBytes = encryptionKey.substring(0,32).getBytes("UTF-8");
-        SecretKeySpec secretKey = new SecretKeySpec(keyBytes, "AES");
-
-        byte[] iv = new byte[IV_LENGTH];
-        new SecureRandom().nextBytes(iv);
-
-        Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-        GCMParameterSpec gcmSpec = new GCMParameterSpec(TAG_LENGTH * 8, iv);
-        cipher.init(Cipher.ENCRYPT_MODE, secretKey, gcmSpec);
-
-        byte[] encryptedData = cipher.doFinal(data);
-
-        byte[] result = new byte[IV_LENGTH + encryptedData.length];
-        System.arraycopy(iv, 0, result, 0, IV_LENGTH);
-        System.arraycopy(encryptedData, 0, result, IV_LENGTH, encryptedData.length);
-
-        return result;
+        return publicKey;
     }
 
-    private byte[] decrypt(byte[] encryptedData) throws Exception {
-        if (encryptionKey == null || encryptionKey.length() < 32) {
-            throw new IllegalStateException("Encryption key must be at least 32 characters long");
-        }
-
-        if (encryptedData.length < IV_LENGTH) {
-            throw new IllegalArgumentException("Encrypted data is too short");
-        }
-
-        byte[] keyBytes = encryptionKey.substring(0,32).getBytes("UTF-8");
-        SecretKeySpec secretKey = new SecretKeySpec(keyBytes, "AES");
-
-        byte[] iv = new byte[IV_LENGTH];
-        System.arraycopy(encryptedData, 0, iv, 0, IV_LENGTH);
-
-        byte[] cipherText = new byte[encryptedData.length - IV_LENGTH];
-        System.arraycopy(encryptedData, IV_LENGTH, cipherText, 0, cipherText.length);
-
-        Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-        GCMParameterSpec gcmSpec = new GCMParameterSpec(TAG_LENGTH * 8, iv);
-        cipher.init(Cipher.DECRYPT_MODE, secretKey, gcmSpec);
-
-        return cipher.doFinal(cipherText);
-    }
     public X509Certificate toX509Certificate() throws Exception {
         X500Name subjectName = subject.getX500Name();
         X500Name issuerName = issuer.getX500Name();
