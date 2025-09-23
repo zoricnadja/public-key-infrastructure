@@ -12,6 +12,8 @@ import com.example.publickeyinfrastructure.model.Issuer;
 import com.example.publickeyinfrastructure.model.Subject;
 import com.example.publickeyinfrastructure.service.CertificateService;
 import org.bouncycastle.openssl.jcajce.JcaPEMWriter;
+import org.bouncycastle.util.io.pem.PemObject;
+import org.bouncycastle.util.io.pem.PemWriter;
 import org.modelmapper.Converter;
 import org.modelmapper.ModelMapper;
 import org.slf4j.Logger;
@@ -45,25 +47,19 @@ public class CertificateMapper {
     }
 
     private void configureMapper() {
-        Converter<Certificate, String> certToPemConverter = context -> {
-            Certificate cert = context.getSource();
-            if (cert == null) return null;
-
-            try {
-                X509Certificate x509Cert = cert.toX509Certificate();
-                StringWriter sw = new StringWriter();
-                try (JcaPEMWriter pemWriter = new JcaPEMWriter(sw)) {
-                    pemWriter.writeObject(x509Cert);
-                }
-                return sw.toString();
-            } catch (Exception e) {
-                throw new RuntimeException("Failed to convert certificate to PEM", e);
-            }
-        };
+//        Converter<Certificate, String> certToPemConverter = context -> {
+//            Certificate cert = context.getSource();
+//            if (cert == null) return null;
+//
+//            try (StringWriter sw = new StringWriter(); PemWriter pw = new PemWriter(sw)) {
+//                pw.writeObject(new PemObject("CERTIFICATE", cert.toX509Certificate().getEncoded()));
+//                return sw.toString();
+//            } catch (Exception e) {
+//                throw new RuntimeException("Failed to convert certificate to PEM", e);
+//            }
+//        };
 
         modelMapper.typeMap(Certificate.class, CertificateDTO.class)
-                .addMappings(mapper -> mapper.using(certToPemConverter)
-                        .map(src -> src, CertificateDTO::setCertificatePem))
                 .addMapping(src -> src.getSubject() != null ? src.getSubject().getCommonName() : null,
                         CertificateDTO::setSubjectCN)
                 .addMapping(src -> src.getSubject() != null ? src.getSubject().getOrganization() : null,
@@ -76,6 +72,7 @@ public class CertificateMapper {
                         CertificateDTO::setIssuerO)
                 .addMapping(src -> src.getIssuer() != null ? src.getIssuer().getOrganizationalUnit() : null,
                         CertificateDTO::setIssuerOU);
+
     }
 
     public CertificateDTO toDTO(Certificate certificate) {
@@ -91,8 +88,6 @@ public class CertificateMapper {
         if (request.getSubject() != null) {
             Subject subject = new Subject();
             KeyPair keyPairSubject = certificateService.generateKeyPair();
-            logger.debug("ovo {}", keyPairSubject.getPublic().getEncoded().length);
-            logger.debug("ovo {}", keyPairSubject.getPublic()!=null);
             subject.setPublicKey(keyPairSubject.getPublic());
             subject.setCommonName(request.getSubject().getCommonName());
             subject.setOrganization(request.getSubject().getOrganization());
@@ -104,6 +99,7 @@ public class CertificateMapper {
             certificate.setSubject(subject);
         }
         if (request.getIssuerSerialNumber() != null) {
+            logger.debug("stampaj {}", request.getIssuerSerialNumber());
             Certificate issuerCertificate = certificateService.findBySerialNumber(request.getIssuerSerialNumber());
             if (issuerCertificate == null) {
                 throw new RuntimeException("Issuer certificate not found by serial number: " + request.getIssuerSerialNumber());
@@ -122,10 +118,10 @@ public class CertificateMapper {
             issuer.setPublicKey(issuerCertificate.getPublicKey());
             certificate.setIssuer(issuer);
         } else {
-            if (certificate.getSubject() != null) {
-                Issuer selfIssuer = createIssuerFromSubject(certificate.getSubject());
-                certificate.setIssuer(selfIssuer);
-            }
+//            if (certificate.getSubject() != null) {
+//                Issuer selfIssuer = createIssuerFromSubject(certificate.getSubject());
+//                certificate.setIssuer(selfIssuer);
+//            }
         }
 
         if (request.getExtensions() != null && !request.getExtensions().isEmpty()) {

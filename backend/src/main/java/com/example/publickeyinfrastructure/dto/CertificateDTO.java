@@ -17,7 +17,6 @@ public class CertificateDTO {
     private Date issued;
     private Date expires;
     private String signatureAlgorithm;
-    private String certificatePem;
     private String subjectCN;
     private String subjectO;
     private String subjectOU;

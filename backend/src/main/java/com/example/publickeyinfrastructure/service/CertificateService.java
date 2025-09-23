@@ -208,7 +208,10 @@ public class CertificateService {
         CertificateType type;
         Optional<CertificateExtension> bcExtension = getBasicConstraints(certificateRequest);
         X509Certificate xCertificate;
-        if (certificateRequest.getIssuer() != null) {
+
+        if (certificateRequest.getIssuer()!= null ) {
+            logger.debug("prosao sam 1");
+
             issuer = generateIssuer(certificateRequest);
             certificateRequest.setIssuer(issuer);
             Certificate issuerCertificate = findBySerialNumber(issuerAlias);
@@ -224,6 +227,8 @@ public class CertificateService {
             }
         }
         else {
+            logger.debug("prosao sam 2");
+
             KeyPair keyPair = generateKeyPair();
             issuer = new Issuer();
             subject.setPublicKey(keyPair.getPublic());
@@ -237,6 +242,7 @@ public class CertificateService {
             issuer.setState(subject.getState());
             issuer.setPrivateKey(keyPair.getPrivate());
             certificateRequest.setIssuer(issuer);
+            logger.debug(certificateRequest.getSerialNumber());
             xCertificate = CertificateGenerator.generateRootCA(certificateRequest);
             type = CertificateType.ROOT;
         }
@@ -250,6 +256,7 @@ public class CertificateService {
         certificate.setPublicKey(xCertificate.getPublicKey());
         certificate.setIssued(xCertificate.getNotBefore());
         certificate.setExpires(xCertificate.getNotAfter());
+
         certificate.setType(type);
         certificate = certificateRepository.save(certificate);
         projectKeyStore.load("keystore.jks", Constants.ENTRY_PASSWORD); // ucitaj postojeci ili kreiraj novi KS
@@ -261,7 +268,7 @@ public class CertificateService {
     }
 
     private Issuer generateIssuer(Certificate certificateRequest){
-        Subject issuer = certificateRepository.findById(certificateRequest.getIssuer().getId()).get().getSubject();
+        Subject issuer = certificateRepository.findBySubject_CommonName(certificateRequest.getIssuer().getCommonName()).get().getSubject();
         PrivateKey issuerKey = projectKeyStore.readPrivateKey(certificateRequest.getSerialNumber(), Constants.ENTRY_PASSWORD);
         Issuer generatedIssuer = new Issuer();
         generatedIssuer.setEmail(issuer.getEmail());

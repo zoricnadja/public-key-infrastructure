@@ -54,7 +54,7 @@ public class CertificateGenerator {
 
         JcaX509v3CertificateBuilder certBuilder = new JcaX509v3CertificateBuilder(
                 issuerName,
-                new BigInteger(certificateData.getSerialNumber()),
+                new BigInteger(64, new SecureRandom()),
                 certificateData.getIssued(),
                 certificateData.getExpires(),
                 subjectName,
