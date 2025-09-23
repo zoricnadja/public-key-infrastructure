@@ -55,7 +55,7 @@ public class CertificateController {
         logger.debug("ovo je {}", caCertificates);
 
         List<CertificateDTO> response = caCertificates.stream()
-                .map(certificateMapper::toDTO)
+                .map(this::convert)
                 .toList();
         logger.debug("ovo je prosao");
 
@@ -79,6 +79,34 @@ public class CertificateController {
         else if (RoleUtil.hasAnyRole(jwt, "ROLE_CA_USER")) {
             role = Role.CA_USER;
         }
-        return ResponseEntity.status(HttpStatus.CREATED).body(certificateMapper.toDTO(this.certificateService.createCertificate(certificateMapper.fromRequest(request), role, request.getIssuerSerialNumber())));
+        Certificate certificate = this.certificateService.createCertificate(certificateMapper.fromRequest(request), role, request.getIssuerSerialNumber());
+
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(convert(certificate));
+    }
+
+    private CertificateDTO convert(Certificate certificate){
+        CertificateDTO dto = new CertificateDTO();
+
+        dto.setSerialNumber(certificate.getSerialNumber());
+        dto.setType(certificate.getType() != null ? certificate.getType().name() : null);
+        dto.setIssued(certificate.getIssued());
+        dto.setExpires(certificate.getExpires());
+        dto.setSignatureAlgorithm(certificate.getSignatureAlgorithm());
+
+        // Subject fields
+        if (certificate.getSubject() != null) {
+            dto.setSubjectCN(certificate.getSubject().getCommonName());
+            dto.setSubjectO(certificate.getSubject().getOrganization());
+            dto.setSubjectOU(certificate.getSubject().getOrganizationalUnit());
+        }
+
+        // Issuer fields
+        if (certificate.getIssuer() != null) {
+            dto.setIssuerCN(certificate.getIssuer().getCommonName());
+            dto.setIssuerO(certificate.getIssuer().getOrganization());
+            dto.setIssuerOU(certificate.getIssuer().getOrganizationalUnit());
+        }
+        return dto;
     }
 }
