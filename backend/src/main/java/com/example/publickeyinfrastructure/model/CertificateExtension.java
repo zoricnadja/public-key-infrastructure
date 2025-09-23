@@ -22,24 +22,20 @@ public class CertificateExtension {
     @JoinColumn(name = "certificate_id", nullable = false)
     private Certificate certificate;
 
-    @Column(name = "oid", nullable = false)
+    @Column
     private String oid;
 
-    @Column(name = "name")
+    @Column
     private String name;
 
-    @Column(name = "is_critical", nullable = false)
+    @Column
     private Boolean isCritical = false;
 
-    @Lob
-    @Column(name = "value_bytes")
-    private byte[] valueBytes;
-
-    @Column(name = "value_string", columnDefinition = "TEXT")
-    private String valueString;
+    @Column
+    private String value;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "extension_type")
+    @Column
     private ExtensionType extensionType;
 
     @Override
@@ -50,7 +46,7 @@ public class CertificateExtension {
                 ", name='" + name + '\'' +
                 ", isCritical=" + isCritical +
                 ", extensionType=" + extensionType +
-                ", valueString='" + valueString + '\'' +
+                ", valueString='" + value + '\'' +
                 '}';
     }
 }

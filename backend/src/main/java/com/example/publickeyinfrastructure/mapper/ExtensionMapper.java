@@ -1,47 +1,29 @@
 package com.example.publickeyinfrastructure.mapper;
 
 import com.example.publickeyinfrastructure.dto.ExtensionDTO;
-import com.example.publickeyinfrastructure.model.Certificate;
 import com.example.publickeyinfrastructure.model.CertificateExtension;
 import com.example.publickeyinfrastructure.model.ExtensionType;
+import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Component;
 
 @Component
 public class ExtensionMapper {
 
-    /**
-     * Mapira ExtensionDTO u CertificateExtension entitet i povezuje ga sa sertifikatom
-     */
-    public CertificateExtension fromDTO(ExtensionDTO dto, Certificate certificate) {
-        if (dto == null) return null;
-        if (certificate == null) {
-            throw new IllegalArgumentException("Certificate must not be null when mapping extension");
-        }
+    private final ModelMapper mapper;
 
-        CertificateExtension extension = new CertificateExtension();
-        extension.setOid(dto.getOid());
-        extension.setName(dto.getName());
-        extension.setValueString(dto.getValue());
-        extension.setIsCritical(dto.getCritical() != null ? dto.getCritical() : false);
-        extension.setCertificate(certificate);
+    public ExtensionMapper(ModelMapper mapper) {
+        this.mapper = mapper;
+    }
+
+    public ExtensionDTO toDto(CertificateExtension issuer) {
+        return mapper.map(issuer, ExtensionDTO.class);
+    }
+
+    public CertificateExtension toEntity(ExtensionDTO dto) {
+        CertificateExtension extension = mapper.map(dto, CertificateExtension.class);
         extension.setExtensionType(mapNameToExtensionType(dto.getName()));
         return extension;
     }
-
-    /**
-     * Mapira CertificateExtension entitet u DTO
-     */
-    public ExtensionDTO toDTO(CertificateExtension extension) {
-        if (extension == null) return null;
-
-        return new ExtensionDTO(
-                extension.getOid(),
-                extension.getName(),
-                extension.getValueString(),
-                extension.getIsCritical()
-        );
-    }
-
     private ExtensionType mapNameToExtensionType(String name) {
         if (name == null) return ExtensionType.CUSTOM;
 

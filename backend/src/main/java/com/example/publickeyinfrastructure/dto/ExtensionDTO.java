@@ -13,5 +13,5 @@ public class ExtensionDTO {
     private String oid;
     private String name;
     private String value;
-    private Boolean critical;
+    private Boolean isCritical;
 }
