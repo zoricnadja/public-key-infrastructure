@@ -20,10 +20,9 @@ public class KeycloakRoleConverter implements Converter<Jwt, AbstractAuthenticat
         Map<String, Collection<String>> realmAccess = jwt.getClaim("realm_access");
         Collection<String> roles = realmAccess.get("roles");
         Collection<GrantedAuthority> authorities = roles.stream()
-                .map(role -> new SimpleGrantedAuthority("ROLE_" + role.toUpperCase()))
+                .map(role -> new SimpleGrantedAuthority("ROLE_" + role.toUpperCase().replace("-", "_")))
                 .collect(Collectors.toList());
-        AbstractAuthenticationToken authenticationToken = new JwtAuthenticationToken(jwt, authorities);
-        return authenticationToken;
+        return new JwtAuthenticationToken(jwt, authorities);
     }
 
 }

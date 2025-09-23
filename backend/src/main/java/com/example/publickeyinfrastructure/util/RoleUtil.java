@@ -1,29 +1,51 @@
 package com.example.publickeyinfrastructure.util;
 
-import org.springframework.security.oauth2.jwt.Jwt;
+import com.example.publickeyinfrastructure.model.Role;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 
+
+import java.util.Collection;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.stream.Collectors;
 
 public class RoleUtil {
+    private static final Logger logger = LoggerFactory.getLogger(RoleUtil.class);
 
-    public static boolean hasAnyRole(Jwt jwt, String... rolesToCheck) {
-        if (jwt == null) return false;
+    public static List<String> getRoles(Authentication authentication) {
+        return authentication.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .collect(Collectors.toList());
+    }
 
-        Map<String, Object> realmAccess = jwt.getClaim("realm_access");
-        if (realmAccess == null || !realmAccess.containsKey("roles")) {
-            return false;
+    public static boolean hasRole(Authentication authentication, Role role) {
+        /*
+        -----------------LOGOVANJE-----------------------
+         */
+        Collection<? extends GrantedAuthority> roles = authentication.getAuthorities();
+        List<String> roleNames = roles.stream()
+                .map(GrantedAuthority::getAuthority)
+                .toList();
+        logger.debug(roleNames.toString());
+        /*
+        -------------------------------------------------
+         */
+        return getRoles(authentication).contains("ROLE_" + role);
+    }
+
+    public static Role extraxtRole(Authentication authentication) {
+        Role role = null;
+        if (RoleUtil.hasRole(authentication, Role.ADMIN)) {
+            role = Role.ADMIN;
         }
-
-        List<String> roles = (List<String>) realmAccess.get("roles");
-        Set<String> rolesSet = Set.copyOf(roles);
-
-        for (String role : rolesToCheck) {
-            if (rolesSet.contains(role)) {
-                return true;
-            }
+        else if (RoleUtil.hasRole(authentication, Role.USER)) {
+            role = Role.USER;
         }
-        return false;
+        else if (RoleUtil.hasRole(authentication, Role.CA_USER)) {
+            role = Role.CA_USER;
+        }
+        return role;
     }
 }
