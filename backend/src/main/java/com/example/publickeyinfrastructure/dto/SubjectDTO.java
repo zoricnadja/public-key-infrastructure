@@ -14,8 +14,7 @@ public class SubjectDTO {
     private String email;
     private String country;
     private String organization;
-    private String organizationUnit;
+    private String organizationalUnit;
     private String state;
     private String locality;
-
 }
