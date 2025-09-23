@@ -1,13 +1,21 @@
 package com.example.publickeyinfrastructure.service;
 
+import com.example.publickeyinfrastructure.config.Constants;
+import com.example.publickeyinfrastructure.controller.CertificateController;
+import com.example.publickeyinfrastructure.keystore.ProjectKeyStore;
 import com.example.publickeyinfrastructure.model.Certificate;
+import com.example.publickeyinfrastructure.model.CertificateExtension;
 import com.example.publickeyinfrastructure.model.CertificateType;
+import com.example.publickeyinfrastructure.model.ExtensionType;
 import com.example.publickeyinfrastructure.model.Issuer;
+import com.example.publickeyinfrastructure.model.Role;
+import com.example.publickeyinfrastructure.model.Subject;
 import com.example.publickeyinfrastructure.model.User;
 import com.example.publickeyinfrastructure.repository.CertificateRepository;
-import com.example.publickeyinfrastructure.repository.IssuerRepository;
-import com.example.publickeyinfrastructure.repository.UserRepository;
+import jakarta.persistence.EntityNotFoundException;
 import org.bouncycastle.asn1.x500.X500Name;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -15,6 +23,7 @@ import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
+import java.security.PrivateKey;
 import java.security.SecureRandom;
 import java.security.cert.X509Certificate;
 import java.util.List;
@@ -23,29 +32,34 @@ import java.util.Optional;
 @Service
 public class CertificateService {
 
-    @Autowired
-    private UserRepository userRepository;
 
-    @Autowired
     private CertificateRepository certificateRepository;
 
+    private static final Logger logger = LoggerFactory.getLogger(CertificateService.class);
+
+    private ProjectKeyStore projectKeyStore;
+
     @Autowired
-    private IssuerRepository issuerRepository;
+    public CertificateService(CertificateRepository certificateRepository, ProjectKeyStore projectKeyStore) {
+        this.certificateRepository = certificateRepository;
+        this.projectKeyStore = projectKeyStore;
+    }
 
     public KeyPair generateKeyPair() {
         try {
             KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
-            SecureRandom random = SecureRandom.getInstance("SHA1PRNG", "SUN");
-            keyGen.initialize(2048, random);
+            logger.debug("gen {}", keyGen);
+            SecureRandom random = SecureRandom.getInstanceStrong(); // koristi strong RNG
+            keyGen.initialize(Constants.KEY_SIZE);
+
             return keyGen.generateKeyPair();
-        } catch (NoSuchAlgorithmException | NoSuchProviderException e) {
-            e.printStackTrace();
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException("RSA algorithm not supported on this JVM", e);
         }
-        return null;
     }
 
-    public List<Issuer> getIssuers() {
-        return issuerRepository.findAll();
+    public Certificate findBySerialNumber(String serialNumber){
+        return certificateRepository.findBySerialNumber(serialNumber).orElseThrow(() -> new EntityNotFoundException("Certificate not found"));
     }
 
 //    public List<Certificate> getAvailableCACertificates(User user, CertificateType requestedType) {
@@ -187,79 +201,90 @@ public class CertificateService {
     }
 
 
-//    public Certificate createCertificate(Certificate certificateRequest) {
-//        Subject subject = generateSubjectData(certificateRequest);
-//        Issuer issuer;
-//        if (certificateRequest.getIssuer() != null)
-//            issuer = generateIssuer(certificateRequest);
-//        else {
-//            issuer = new Issuer(subject.getX500Name(), subject.getPrivateKey());
-//        }
-//
-//        X509Certificate xCertificate = generateCertificate(issuer, subject);
-//
-//        Certificate certificateEntity = new Certificate(xCertificate, certificateRequest);
-//        certificateEntity = certificateRepository.save(certificateEntity);
-//
-//        return certificateEntity;
-//    }
-//
-//    private X509Certificate generateCertificate(Issuer issuer, Subject subject) throws CertificateException, OperatorCreationException {
-//        JcaContentSignerBuilder builder = new JcaContentSignerBuilder("SHA256WithRSAEncryption");
-//        builder = builder.setProvider("BC");
-//
-//        // Formira se objekat koji ce sadrzati privatni kljuc i koji ce se koristiti za potpisivanje sertifikata
-//        ContentSigner contentSigner = builder.build(issuer.getPrivateKey());
-//
-//        X509v3CertificateBuilder certGen = new JcaX509v3CertificateBuilder(
-//                issuer.getX500name(),
-//                new BigInteger(subject.getSerialNumber()),
-//                subject.getStartDate(),
-//                subject.getEndDate(),
-//                subject.getX500name(),
-//                subject.getPublicKey());
-//        X509CertificateHolder certHolder = certGen.build(contentSigner);
-//        JcaX509CertificateConverter certConverter = new JcaX509CertificateConverter();
-//        certConverter = certConverter.setProvider("BC");
-//
-//        // Konvertuje objekat u sertifikat
-//        return certConverter.getCertificate(certHolder);
-//    }
-//
-//    private String generateAlias(User user){
-//        return String.valueOf(new Random().nextLong());
-//    }
+    public Certificate createCertificate(Certificate certificateRequest, Role subjectRole, String issuerAlias) throws Exception {
+        Issuer issuer;
+        Subject subject = certificateRequest.getSubject();
+        certificateRequest.setSubject(subject);
+        CertificateType type;
+        Optional<CertificateExtension> bcExtension = getBasicConstraints(certificateRequest);
+        X509Certificate xCertificate;
+        if (certificateRequest.getIssuer() != null) {
+            issuer = generateIssuer(certificateRequest);
+            certificateRequest.setIssuer(issuer);
+            Certificate issuerCertificate = findBySerialNumber(issuerAlias);
 
-//    private Subject generateSubject(Certificate certificateRequest){
-//        KeyPair keyPairSubject = generateKeyPair();
-//        User user = certificateRequest.getSubject();
-//
-//        DateUtil dateUtil = new DateUtil();
-//        Date startDate = dateUtil.generateStartTime();
-//        Date endDate = dateUtil.generateEndTime(startDate, certificateRequest);
-//        String serialNumber = generateAlias(certificateRequest.getSubject());
-//
-//        X500NameBuilder builder = new X500NameBuilder(BCStyle.INSTANCE);
-//        builder.addRDN(BCStyle.CN, user.getUsername());
-//        builder.addRDN(BCStyle.SURNAME, user.getSurname());
-//        builder.addRDN(BCStyle.GIVENNAME, user.getName());
-//        builder.addRDN(BCStyle.E, user.getEmail());
-//        builder.addRDN(BCStyle.UID, user.getId().toString());
-//
-//        return new Subject(keyPairSubject.getPublic(), keyPairSubject.getPrivate(), builder.build(), serialNumber,
-//                startDate, endDate);
-//    }
-//
-//    private Issuer generateIssuer(CertificateRequest certificateRequest){
-//        User issuer = certificateRepository.findById(certificateRequest.getIssuer().getId()).get().getSubject();
-//        PrivateKey issuerKey = KeyStoreReader.readPrivateKey(certificateRequest.getIssuer().getSerialNumber(), KeyStoreConstants.ENTRY_PASSWORD);
-//        X500NameBuilder builder = new X500NameBuilder(BCStyle.INSTANCE);
-//        builder.addRDN(BCStyle.CN, issuer.getUsername());
-//        builder.addRDN(BCStyle.SURNAME, issuer.getSurname());
-//        builder.addRDN(BCStyle.GIVENNAME, issuer.getName());
-//        builder.addRDN(BCStyle.E, issuer.getEmail());
-//        builder.addRDN(BCStyle.UID, String.valueOf(issuer.getId()));
-//
-//        return new Issuer(builder.build(), issuerKey);
-//    }
+            if(bcExtension.isPresent() && bcExtension.get().getValueString().equals("CA:false")){
+                xCertificate = CertificateGenerator.generateEndEntity(certificateRequest, issuerCertificate.toX509Certificate(), issuer.getPrivateKey());
+                type = CertificateType.END_ENTITY;
+            } else if(bcExtension.isPresent() && bcExtension.get().getValueString().equals("CA:true") && !subjectRole.equals(Role.USER)){
+                type = CertificateType.INTERMEDIATE;
+                xCertificate = CertificateGenerator.generateIntermediateCA(certificateRequest, issuerCertificate.toX509Certificate(), issuer.getPrivateKey());
+            } else{
+                throw new IllegalArgumentException("User cannot create intermediate certificate");
+            }
+        }
+        else {
+            KeyPair keyPair = generateKeyPair();
+            issuer = new Issuer();
+            subject.setPublicKey(keyPair.getPublic());
+            issuer.setPublicKey(subject.getPublicKey());
+            issuer.setEmail(subject.getEmail());
+            issuer.setLocality(subject.getLocality());
+            issuer.setOrganization(subject.getOrganization());
+            issuer.setOrganizationalUnit(subject.getOrganizationalUnit());
+            issuer.setCountry(subject.getCountry());
+            issuer.setCommonName(subject.getCommonName());
+            issuer.setState(subject.getState());
+            issuer.setPrivateKey(keyPair.getPrivate());
+            certificateRequest.setIssuer(issuer);
+            xCertificate = CertificateGenerator.generateRootCA(certificateRequest);
+            type = CertificateType.ROOT;
+        }
+
+
+        Certificate certificate = new Certificate();
+        certificate.setSerialNumber(xCertificate.getSerialNumber().toString());
+        certificate.setSignature(xCertificate.getSignature());
+        certificate.setIssuer(issuer);
+        certificate.setSubject(subject);
+        certificate.setPublicKey(xCertificate.getPublicKey());
+        certificate.setIssued(xCertificate.getNotBefore());
+        certificate.setExpires(xCertificate.getNotAfter());
+        certificate.setType(type);
+        certificate = certificateRepository.save(certificate);
+        projectKeyStore.load("keystore.jks", Constants.ENTRY_PASSWORD); // ucitaj postojeci ili kreiraj novi KS
+        projectKeyStore.writeKeyEntry(issuer.getCommonName(), issuer.getPrivateKey(), Constants.ENTRY_PASSWORD, xCertificate);
+        projectKeyStore.save("keystore.jks", Constants.ENTRY_PASSWORD);
+
+
+        return certificate;
+    }
+
+    private Issuer generateIssuer(Certificate certificateRequest){
+        Subject issuer = certificateRepository.findById(certificateRequest.getIssuer().getId()).get().getSubject();
+        PrivateKey issuerKey = projectKeyStore.readPrivateKey(certificateRequest.getSerialNumber(), Constants.ENTRY_PASSWORD);
+        Issuer generatedIssuer = new Issuer();
+        generatedIssuer.setEmail(issuer.getEmail());
+        generatedIssuer.setLocality(issuer.getLocality());
+        generatedIssuer.setOrganization(issuer.getOrganization());
+        generatedIssuer.setOrganizationalUnit(issuer.getOrganizationalUnit());
+        generatedIssuer.setCountry(issuer.getCountry());
+        generatedIssuer.setCommonName(issuer.getCommonName());
+        generatedIssuer.setState(issuer.getState());
+        generatedIssuer.setPrivateKey(issuerKey);
+        generatedIssuer.setPublicKey(issuer.getPublicKey());
+
+        return generatedIssuer;
+    }
+
+    public static Optional<CertificateExtension> getBasicConstraints(Certificate certificate) {
+        if (certificate == null || certificate.getExtensions() == null) {
+            return Optional.empty();
+        }
+
+        return certificate.getExtensions().stream()
+                .filter(ext -> ext.getExtensionType() == ExtensionType.BASIC_CONSTRAINTS)
+                .findFirst();
+    }
+
 }

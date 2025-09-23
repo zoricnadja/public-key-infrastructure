@@ -1,4 +1,4 @@
-package com.example.publickeyinfrastructure.configuration;
+package com.example.publickeyinfrastructure.config;
 
 import org.modelmapper.ModelMapper;
 import org.springframework.context.annotation.Bean;

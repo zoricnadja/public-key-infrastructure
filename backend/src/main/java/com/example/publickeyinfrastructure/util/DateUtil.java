@@ -1,6 +1,6 @@
 package com.example.publickeyinfrastructure.util;
 
-import com.example.publickeyinfrastructure.configuration.Constants;
+import com.example.publickeyinfrastructure.config.Constants;
 import com.example.publickeyinfrastructure.model.CertificateType;
 
 import java.time.LocalDateTime;

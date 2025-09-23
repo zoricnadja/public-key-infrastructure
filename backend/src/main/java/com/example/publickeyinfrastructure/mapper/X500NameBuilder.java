@@ -2,6 +2,7 @@ package com.example.publickeyinfrastructure.mapper;
 
 import com.example.publickeyinfrastructure.dto.SubjectDTO;
 import com.example.publickeyinfrastructure.model.HasX500Fields;
+import com.example.publickeyinfrastructure.model.Issuer;
 import org.bouncycastle.asn1.ASN1ObjectIdentifier;
 import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.asn1.x500.RDN;

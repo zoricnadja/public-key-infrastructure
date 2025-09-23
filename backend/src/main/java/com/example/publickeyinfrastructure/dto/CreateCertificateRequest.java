@@ -4,7 +4,6 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.bouncycastle.asn1.x509.Extension;
 
 import java.util.Date;
 import java.util.List;
@@ -14,9 +13,9 @@ import java.util.List;
 @Setter
 @Getter
 public class CreateCertificateRequest {
-    private String issuerCertificateAlias;
+    private String issuerSerialNumber;
     private SubjectDTO subject;
-    private List<Extension> extensions;
+    private List<ExtensionDTO> extensions;
     private Date issued;
     private Date expires;
 }
