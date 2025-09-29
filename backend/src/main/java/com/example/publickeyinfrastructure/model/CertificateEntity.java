@@ -1,6 +1,5 @@
 package com.example.publickeyinfrastructure.model;
 
-import com.example.publickeyinfrastructure.mapper.X500NameBuilder;
 import com.example.publickeyinfrastructure.util.KeyUtil;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -15,6 +14,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.bouncycastle.asn1.x500.X500Name;
+import org.bouncycastle.asn1.x500.X500NameBuilder;
+import org.bouncycastle.asn1.x500.style.BCStyle;
 
 import java.security.PrivateKey;
 import java.security.PublicKey;
@@ -25,7 +26,7 @@ import java.security.PublicKey;
 @NoArgsConstructor
 @Entity
 @Table(name = "certificate_entities")
-public class CertificateEntity implements HasX500Fields{
+public class CertificateEntity {
 
     //todo
     private static String encryptionKey = "ChangeThisEncryptionKeyToBeAtLeast32Chars!aaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
@@ -36,6 +37,12 @@ public class CertificateEntity implements HasX500Fields{
 
     @Column
     private String commonName;
+
+    @Column
+    private String surname;
+
+    @Column
+    private String givenName;
 
     @Column
     private String organization;
@@ -98,6 +105,15 @@ public class CertificateEntity implements HasX500Fields{
 
     @Transient
     public X500Name getX500Name() {
-        return X500NameBuilder.buildX500Name(this);
+        X500NameBuilder builder = new X500NameBuilder(BCStyle.INSTANCE);
+        builder.addRDN(BCStyle.CN, commonName);
+        builder.addRDN(BCStyle.SURNAME, surname);
+        builder.addRDN(BCStyle.GIVENNAME, givenName);
+        builder.addRDN(BCStyle.O, organization);
+        builder.addRDN(BCStyle.OU, organizationalUnit);
+        builder.addRDN(BCStyle.C, country);
+        builder.addRDN(BCStyle.E, email);
+        builder.addRDN(BCStyle.UID, String.valueOf(id));
+        return builder.build();
     }
 }

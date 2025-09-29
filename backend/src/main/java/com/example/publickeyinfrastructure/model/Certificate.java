@@ -80,8 +80,18 @@ public class Certificate {
     @Column
     private byte[] signature;
 
-    @OneToMany(mappedBy = "certificate", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = "certificate_id")
     private List<CertificateExtension> extensions = new ArrayList<>();
+
+    //todo do i need this?
+    public void addExtension(CertificateExtension extension) {
+        extensions.add(extension);
+    }
+
+    public void removeExtension(CertificateExtension extension) {
+        extensions.remove(extension);
+    }
 
     public boolean isDateValid() {
         Date now = new Date();
