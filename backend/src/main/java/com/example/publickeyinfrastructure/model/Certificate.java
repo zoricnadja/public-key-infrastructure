@@ -1,5 +1,6 @@
 package com.example.publickeyinfrastructure.model;
 
+import com.example.publickeyinfrastructure.config.Constants;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -112,13 +113,13 @@ public class Certificate {
         );
 
         ContentSigner signer = new JcaContentSignerBuilder(signatureAlgorithm)
-                .setProvider("BC")
+                .setProvider(Constants.PROVIDER)
                 .build(issuer.getPrivateKey());
 
         X509CertificateHolder holder = certBuilder.build(signer);
 
         return new JcaX509CertificateConverter()
-                .setProvider("BC")
+                .setProvider(Constants.PROVIDER)
                 .getCertificate(holder);
     }
 
