@@ -24,9 +24,10 @@ import java.security.PublicKey;
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity
-@Table(name = "issuers")
-public class Issuer implements HasX500Fields{
+@Table(name = "certificate_entities")
+public class CertificateEntity implements HasX500Fields{
 
+    //todo
     private static String encryptionKey = "ChangeThisEncryptionKeyToBeAtLeast32Chars!aaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 
     @Id
