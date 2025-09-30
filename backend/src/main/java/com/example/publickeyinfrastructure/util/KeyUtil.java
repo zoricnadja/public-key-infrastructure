@@ -1,97 +1,69 @@
 package com.example.publickeyinfrastructure.util;
 
+import com.example.publickeyinfrastructure.config.Constants;
+
 import javax.crypto.Cipher;
+import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.GCMParameterSpec;
+import javax.crypto.spec.PBEKeySpec;
 import javax.crypto.spec.SecretKeySpec;
-import java.nio.charset.StandardCharsets;
 import java.security.KeyFactory;
 import java.security.PublicKey;
 import java.security.SecureRandom;
 import java.security.spec.X509EncodedKeySpec;
+import java.security.spec.KeySpec;
 import java.util.Base64;
 
 public class KeyUtil {
 
-    private static final int IV_LENGTH = 12;
-    private static final int TAG_LENGTH = 16;
+    public static final int SALT_LENGTH = 16;
+    public static final int IV_LENGTH = 12;
+    public static final int TAG_LENGTH_BITS = 128;
+    public static final int PBKDF2_ITERATIONS = 65536;
+    public static final int KEY_LENGTH_BITS = 256;
 
-    /**
-     * Encrypt raw bytes using AES/GCM
-     */
-    public static byte[] encryptBytes(byte[] data, String encryptionKey) throws Exception {
-        validateKey(encryptionKey);
+    public record EncryptionResult(byte[] encryptedData, byte[] salt, byte[] iv) {
+    }
 
-        byte[] keyBytes = encryptionKey.substring(0, 32).getBytes(StandardCharsets.UTF_8);
-        SecretKeySpec secretKey = new SecretKeySpec(keyBytes, "AES");
-
+    public static EncryptionResult encryptPublicKeyWithSaltIv(PublicKey key, String passphrase) throws Exception {
+        byte[] salt = new byte[SALT_LENGTH];
         byte[] iv = new byte[IV_LENGTH];
-        new SecureRandom().nextBytes(iv);
+        SecureRandom random = new SecureRandom();
+        random.nextBytes(salt);
+        random.nextBytes(iv);
+
+        SecretKeySpec secretKey = deriveKey(passphrase, salt);
 
         Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-        GCMParameterSpec gcmSpec = new GCMParameterSpec(TAG_LENGTH * 8, iv);
-        cipher.init(Cipher.ENCRYPT_MODE, secretKey, gcmSpec);
+        GCMParameterSpec spec = new GCMParameterSpec(TAG_LENGTH_BITS, iv);
+        cipher.init(Cipher.ENCRYPT_MODE, secretKey, spec);
 
-        byte[] encryptedData = cipher.doFinal(data);
+        byte[] encrypted = cipher.doFinal(key.getEncoded());
 
-        byte[] result = new byte[IV_LENGTH + encryptedData.length];
-        System.arraycopy(iv, 0, result, 0, IV_LENGTH);
-        System.arraycopy(encryptedData, 0, result, IV_LENGTH, encryptedData.length);
-
-        return result;
+        return new EncryptionResult(encrypted, salt, iv);
     }
 
-    /**
-     * Decrypt raw bytes using AES/GCM
-     */
-    public static byte[] decryptBytes(byte[] encryptedData, String encryptionKey) throws Exception {
-        validateKey(encryptionKey);
-
-        if (encryptedData.length < IV_LENGTH) {
-            throw new IllegalArgumentException("Encrypted data is too short");
-        }
-
-        byte[] keyBytes = encryptionKey.substring(0, 32).getBytes(StandardCharsets.UTF_8);
-        SecretKeySpec secretKey = new SecretKeySpec(keyBytes, "AES");
-
-        byte[] iv = new byte[IV_LENGTH];
-        System.arraycopy(encryptedData, 0, iv, 0, IV_LENGTH);
-
-        byte[] cipherText = new byte[encryptedData.length - IV_LENGTH];
-        System.arraycopy(encryptedData, IV_LENGTH, cipherText, 0, cipherText.length);
+    public static PublicKey decryptPublicKeyWithSaltIv(byte[] encryptedData, byte[] salt, byte[] iv, String passphrase, String algorithm) throws Exception {
+        SecretKeySpec secretKey = deriveKey(passphrase, salt);
 
         Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-        GCMParameterSpec gcmSpec = new GCMParameterSpec(TAG_LENGTH * 8, iv);
-        cipher.init(Cipher.DECRYPT_MODE, secretKey, gcmSpec);
+        GCMParameterSpec spec = new GCMParameterSpec(TAG_LENGTH_BITS, iv);
+        cipher.init(Cipher.DECRYPT_MODE, secretKey, spec);
 
-        return cipher.doFinal(cipherText);
-    }
+        byte[] decrypted = cipher.doFinal(encryptedData);
 
-    private static void validateKey(String encryptionKey) {
-        if (encryptionKey == null || encryptionKey.length() < 32) {
-            throw new IllegalStateException("Encryption key must be at least 32 characters long");
-        }
-    }
-
-    /**
-     * Convert PublicKey to AES-encrypted byte array
-     */
-    public static byte[] encryptPublicKey(PublicKey key, String encryptionKey) throws Exception {
-        return encryptBytes(key.getEncoded(), encryptionKey);
-    }
-
-    /**
-     * Decrypt AES-encrypted bytes into PublicKey
-     */
-    public static PublicKey decryptPublicKey(byte[] encryptedKey, String encryptionKey, String algorithm) throws Exception {
-        byte[] decoded = decryptBytes(encryptedKey, encryptionKey);
-        X509EncodedKeySpec keySpec = new X509EncodedKeySpec(decoded);
-        KeyFactory keyFactory = KeyFactory.getInstance(algorithm != null ? algorithm : "RSA");
+        X509EncodedKeySpec keySpec = new X509EncodedKeySpec(decrypted);
+        KeyFactory keyFactory = KeyFactory.getInstance(algorithm);
         return keyFactory.generatePublic(keySpec);
     }
 
-    /**
-     * PublicKey <-> Base64 string
-     */
+    private static SecretKeySpec deriveKey(String passphrase, byte[] salt) throws Exception {
+        SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
+        KeySpec spec = new PBEKeySpec(passphrase.toCharArray(), salt, PBKDF2_ITERATIONS, KEY_LENGTH_BITS);
+        byte[] keyBytes = factory.generateSecret(spec).getEncoded();
+        return new SecretKeySpec(keyBytes, "AES");
+    }
+
     public static String publicKeyToBase64(PublicKey publicKey) {
         if (publicKey == null) return null;
         return Base64.getEncoder().encodeToString(publicKey.getEncoded());
@@ -101,7 +73,7 @@ public class KeyUtil {
         if (base64Key == null) return null;
         byte[] decoded = Base64.getDecoder().decode(base64Key);
         X509EncodedKeySpec spec = new X509EncodedKeySpec(decoded);
-        return KeyFactory.getInstance(algorithm != null ? algorithm : "RSA").generatePublic(spec);
+        return KeyFactory.getInstance(algorithm != null ? algorithm : Constants.KEY_ALGORITHM).generatePublic(spec);
     }
 }
 

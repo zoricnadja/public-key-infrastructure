@@ -34,4 +34,6 @@ public interface CertificateRepository extends JpaRepository<Certificate, Long> 
 
     Optional<Certificate> findBySubject_CommonName(String commonName);
     Optional<Certificate> findBySerialNumber(String serialNumber);
+
+    List<Certificate> findAllByTypeIn(List<CertificateType> types);
 }

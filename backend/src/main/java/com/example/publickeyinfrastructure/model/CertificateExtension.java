@@ -20,6 +20,7 @@ public class CertificateExtension {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    //todo check
     @Column
     private Boolean isCritical = false;
 

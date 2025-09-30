@@ -1,5 +1,6 @@
 package com.example.publickeyinfrastructure.dto;
 
+import com.example.publickeyinfrastructure.model.CertificateType;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -14,8 +15,21 @@ import java.util.List;
 @Getter
 public class CreateCertificateRequest {
     private String issuerSerialNumber;
-    private SubjectDTO subject;
+    private X500NameDTO subject;
     private List<ExtensionDTO> extensions;
     private Date issued;
     private Date expires;
+    private CertificateType type;
+
+    @Override
+    public String toString() {
+        return "CreateCertificateRequest{" +
+                "issuerSerialNumber='" + issuerSerialNumber + '\'' +
+                ", subject=" + subject +
+                ", extensions=" + extensions +
+                ", issued=" + issued +
+                ", expires=" + expires +
+                ", type='" + type + '\'' +
+                '}';
+    }
 }

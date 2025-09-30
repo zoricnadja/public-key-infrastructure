@@ -1,14 +1,8 @@
 package com.example.publickeyinfrastructure.model;
 
+import com.example.publickeyinfrastructure.keystore.ProjectKeyStore;
 import com.example.publickeyinfrastructure.util.KeyUtil;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Lob;
-import jakarta.persistence.Table;
-import jakarta.persistence.Transient;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -16,9 +10,12 @@ import lombok.Setter;
 import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.asn1.x500.X500NameBuilder;
 import org.bouncycastle.asn1.x500.style.BCStyle;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.util.Arrays;
 
 @Getter
 @Setter
@@ -27,9 +24,7 @@ import java.security.PublicKey;
 @Entity
 @Table(name = "certificate_entities")
 public class CertificateEntity {
-
-    //todo
-    private static String encryptionKey = "ChangeThisEncryptionKeyToBeAtLeast32Chars!aaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    private static final Logger logger = LoggerFactory.getLogger(CertificateEntity.class);
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -38,9 +33,11 @@ public class CertificateEntity {
     @Column
     private String commonName;
 
+    //todo romove
     @Column
     private String surname;
 
+    //todo romove
     @Column
     private String givenName;
 
@@ -66,23 +63,45 @@ public class CertificateEntity {
     @Column
     private byte[] encryptedPublicKey;
 
+    @Column
+    private byte[] publicKeySalt;
+
+    @Column
+    private byte[] publicKeyIv;
+
     @Transient
     private PrivateKey privateKey;
 
     @Transient
     private PublicKey publicKey;
 
+    //todo remove
     @Column
     private String privateKeyAlgorithm;
 
     @Column
     private String publicKeyAlgorithm;
 
+    @Transient
+    private static String encryptionPassphrase; // Load securely at runtime
+
+    public static void setEncryptionPassphrase(String passphrase) {
+        logger.debug("pass {}", passphrase);
+        if (passphrase == null || passphrase.length() < 12) {
+            throw new IllegalArgumentException("Encryption passphrase must be at least 12 characters long");
+        }
+        encryptionPassphrase = passphrase;
+    }
+
     public void setPublicKey(PublicKey publicKey) {
         this.publicKey = publicKey;
         if (publicKey != null) {
             try {
-                this.encryptedPublicKey = KeyUtil.encryptPublicKey(publicKey, encryptionKey);
+                KeyUtil.EncryptionResult result = KeyUtil.encryptPublicKeyWithSaltIv(publicKey, encryptionPassphrase);
+                this.encryptedPublicKey = result.encryptedData();
+                this.publicKeySalt = result.salt();
+                this.publicKeyIv = result.iv();
+
                 if (this.publicKeyAlgorithm == null) {
                     this.publicKeyAlgorithm = publicKey.getAlgorithm();
                 }
@@ -93,9 +112,9 @@ public class CertificateEntity {
     }
 
     public PublicKey getPublicKey() {
-        if (publicKey == null && encryptedPublicKey != null) {
+        if (publicKey == null && encryptedPublicKey != null && publicKeySalt != null && publicKeyIv != null) {
             try {
-                publicKey = KeyUtil.decryptPublicKey(encryptedPublicKey, encryptionKey, publicKeyAlgorithm);
+                publicKey = KeyUtil.decryptPublicKeyWithSaltIv(encryptedPublicKey, publicKeySalt, publicKeyIv, encryptionPassphrase, publicKeyAlgorithm);
             } catch (Exception e) {
                 throw new RuntimeException("Failed to decrypt public key", e);
             }
@@ -107,13 +126,32 @@ public class CertificateEntity {
     public X500Name getX500Name() {
         X500NameBuilder builder = new X500NameBuilder(BCStyle.INSTANCE);
         builder.addRDN(BCStyle.CN, commonName);
-        builder.addRDN(BCStyle.SURNAME, surname);
-        builder.addRDN(BCStyle.GIVENNAME, givenName);
         builder.addRDN(BCStyle.O, organization);
         builder.addRDN(BCStyle.OU, organizationalUnit);
         builder.addRDN(BCStyle.C, country);
         builder.addRDN(BCStyle.E, email);
         builder.addRDN(BCStyle.UID, String.valueOf(id));
         return builder.build();
+    }
+
+    @Override
+    public String toString() {
+        return "CertificateEntity{" +
+                "id=" + id +
+                ", commonName='" + commonName + '\'' +
+                ", surname='" + surname + '\'' +
+                ", givenName='" + givenName + '\'' +
+                ", organization='" + organization + '\'' +
+                ", organizationalUnit='" + organizationalUnit + '\'' +
+                ", country='" + country + '\'' +
+                ", state='" + state + '\'' +
+                ", locality='" + locality + '\'' +
+                ", email='" + email + '\'' +
+                ", encryptedPublicKey=" + Arrays.toString(encryptedPublicKey) +
+                ", publicKeySalt=" + Arrays.toString(publicKeySalt) +
+                ", publicKeyIv=" + Arrays.toString(publicKeyIv) +
+                ", privateKeyAlgorithm='" + privateKeyAlgorithm + '\'' +
+                ", publicKeyAlgorithm='" + publicKeyAlgorithm + '\'' +
+                '}';
     }
 }

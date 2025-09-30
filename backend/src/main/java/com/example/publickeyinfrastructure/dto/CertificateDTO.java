@@ -1,5 +1,6 @@
 package com.example.publickeyinfrastructure.dto;
 
+import com.example.publickeyinfrastructure.model.CertificateType;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -13,14 +14,10 @@ import java.util.Date;
 @Setter
 public class CertificateDTO {
     private String serialNumber;
-    private String type;
+    private CertificateType type;
     private Date issued;
     private Date expires;
     private String signatureAlgorithm;
-    private String subjectCN;
-    private String subjectO;
-    private String subjectOU;
-    private String issuerCN;
-    private String issuerO;
-    private String issuerOU;
+    private CertificateEntityDTO subject;
+    private CertificateEntityDTO issuer;
 }

@@ -6,6 +6,8 @@ import com.example.publickeyinfrastructure.model.ExtensionType;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Component;
 
+import java.nio.charset.StandardCharsets;
+
 @Component
 public class ExtensionMapper {
 
@@ -15,29 +17,30 @@ public class ExtensionMapper {
         this.mapper = mapper;
     }
 
-    public ExtensionDTO toDto(CertificateExtension issuer) {
-        return mapper.map(issuer, ExtensionDTO.class);
+    public ExtensionDTO toDto(CertificateExtension extension) {
+        ExtensionDTO dto = new ExtensionDTO();
+        dto.setName(extension.getExtensionType().getDisplayName());
+        dto.setOid(extension.getExtensionType().getOid());
+        dto.setIsCritical(extension.getIsCritical());
+
+        // Convert byte[] to String using UTF-8
+        if (extension.getValue() != null) {
+            dto.setValue(new String(extension.getValue(), StandardCharsets.UTF_8));
+        }
+
+        return dto;
     }
 
     public CertificateExtension toEntity(ExtensionDTO dto) {
-        CertificateExtension extension = mapper.map(dto, CertificateExtension.class);
-        extension.setExtensionType(mapNameToExtensionType(dto.getName()));
+        CertificateExtension extension = new CertificateExtension();
+        extension.setExtensionType(ExtensionType.fromOid(dto.getOid()));
+        extension.setIsCritical(dto.getIsCritical());
+
+        // Convert String to byte[] using UTF-8
+        if (dto.getValue() != null && !dto.getValue().isEmpty()) {
+            extension.setValue(dto.getValue().getBytes(StandardCharsets.UTF_8));
+        }
+
         return extension;
     }
-    private ExtensionType mapNameToExtensionType(String name) {
-        if (name == null) return ExtensionType.CUSTOM;
-
-        return switch (name) {
-            case "BasicConstraints" -> ExtensionType.BASIC_CONSTRAINTS;
-            case "KeyUsage" -> ExtensionType.KEY_USAGE;
-            case "ExtendedKeyUsage" -> ExtensionType.EXTENDED_KEY_USAGE;
-            case "SubjectAltName" -> ExtensionType.SUBJECT_ALTERNATIVE_NAME;
-            case "AuthorityKeyIdentifier" -> ExtensionType.AUTHORITY_KEY_IDENTIFIER;
-            case "SubjectKeyIdentifier" -> ExtensionType.SUBJECT_KEY_IDENTIFIER;
-            case "CRLDistributionPoints" -> ExtensionType.CRL_DISTRIBUTION_POINTS;
-            default -> ExtensionType.CUSTOM;
-        };
-    }
-
 }
-

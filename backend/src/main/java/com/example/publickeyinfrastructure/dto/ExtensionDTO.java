@@ -14,4 +14,14 @@ public class ExtensionDTO {
     private String name;
     private String value;
     private Boolean isCritical;
+
+    @Override
+    public String toString() {
+        return "ExtensionDTO{" +
+                "oid='" + oid + '\'' +
+                ", name='" + name + '\'' +
+                ", value='" + value + '\'' +
+                ", isCritical=" + isCritical +
+                '}';
+    }
 }
