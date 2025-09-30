@@ -11,7 +11,7 @@ export class CertificateCreateService {
   constructor(private http: HttpClient) {}
 
   createCertificate(payload: CreateCertificateRequestPayload): Observable<any> {
-    return this.http.post(environment.apiUrl + '/certificates/', payload);
+    return this.http.post(environment.apiUrl + '/certificates', payload);
   }
 
   getIssuers(): Observable<Certificate[]> {

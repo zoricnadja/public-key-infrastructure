@@ -21,6 +21,7 @@ export interface CreateCertificateRequestPayload {
   extensions?: ExtensionPayload[];
   issued?: string;
   expires: string;
+  type: string;
 }
 
 export interface Certificate {
@@ -29,7 +30,6 @@ export interface Certificate {
   issued?: Date;
   expires?: Date;
   signatureAlgorithm?: string;
-  certificatePem?: string;
   subjectCN?: string;
   subjectO?: string;
   subjectOU?: string;

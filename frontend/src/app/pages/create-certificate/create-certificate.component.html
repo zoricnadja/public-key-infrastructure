@@ -3,7 +3,7 @@
 
   <form [formGroup]="form" (ngSubmit)="submit()">
     <div class="mb-3">
-      <label for="issuer" class="form-label">Issuer CA (alias)</label>
+      <label for="issuer" class="form-label">Issuer CA (alias) </label>
       <select id="issuer" class="form-select" formControlName="issuerCertificateAlias">
         <option value="">-- choose issuer --</option>
         <option *ngFor="let a of issuers" [value]="a">{{ a }}</option>
@@ -11,6 +11,15 @@
       <div *ngIf="form.get('issuerCertificateAlias')?.touched && form.get('issuerCertificateAlias')?.invalid && !isAdmin" class="text-danger">
         Please select issuer
       </div>
+    </div>
+
+    <div class="mb-3">
+      <label for="type" class="form-label">Certificate Type </label>
+      <select id="type" class="form-select" formControlName="type">
+        <option value="ROOT">ROOT</option>
+        <option value="INTERMEDIATE">INTERMEDIATE</option>
+        <option value="END">END</option>
+      </select>
     </div>
 
     <h5>Subject (owner)</h5>

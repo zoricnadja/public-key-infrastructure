@@ -54,6 +54,8 @@ export class CertificateCreateComponent implements OnInit {
       extensions: this.fb.array([]),
       issued: [''],
       expires: ['', null],
+      type: ['END', Validators.required], 
+
     });
   }
 
@@ -88,8 +90,13 @@ export class CertificateCreateComponent implements OnInit {
     this.extensions.removeAt(index);
   }
 
-  addCommonExtension(ext: { name: string; oid: string }) {
-    this.addExtension({ oid: ext.oid, name: ext.name, critical: false, value: '' });
+  addCommonExtension(ext: { name: string; oid: string; critical?: boolean; value?: string }) {
+    this.addExtension({
+      oid: ext.oid,
+      name: ext.name,
+      critical: ext.critical,
+      value: ext.value,
+    });
   }
 
   loadIssuers() {
@@ -122,6 +129,7 @@ export class CertificateCreateComponent implements OnInit {
         ? format(new Date(this.form.value.issued), this.format)
         : format(new Date(), this.format),
       expires: format(new Date(this.form.value.expires), this.format),
+      type: this.form.value.type,
     };
 
     this.service.createCertificate(payload).subscribe({
