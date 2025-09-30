@@ -1,6 +1,6 @@
 package com.example.publickeyinfrastructure.controller;
 
-import com.example.publickeyinfrastructure.dto.CertificateDTO;
+import com.example.publickeyinfrastructure.dto.CertificateResponse;
 import com.example.publickeyinfrastructure.dto.CreateCertificateRequest;
 import com.example.publickeyinfrastructure.mapper.CertificateMapper;
 import com.example.publickeyinfrastructure.model.Certificate;
@@ -41,7 +41,7 @@ public class CertificateController {
 
     @GetMapping("/issuers")
     @PreAuthorize("hasAnyRole('ROLE_USER', 'ROLE_ADMIN', 'ROLE_CA_USER')")
-    public ResponseEntity<List<CertificateDTO>> getIssuers(@AuthenticationPrincipal Jwt jwt) {
+    public ResponseEntity<List<CertificateResponse>> getIssuers(@AuthenticationPrincipal Jwt jwt) {
         String email = jwt.getClaimAsString("email");
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new EntityNotFoundException(
@@ -50,7 +50,7 @@ public class CertificateController {
         List<Certificate> caCertificates = certificateService.findAllIssuers();
 
         logger.debug("svi issueri - {}", caCertificates.toString());
-//        List<CertificateDTO> response = caCertificates.stream()
+//        List<CertificateResponse> response = caCertificates.stream()
 //                .map(this::convert)
 //                .toList();
 
@@ -60,7 +60,7 @@ public class CertificateController {
 
     @PostMapping
     @PreAuthorize("hasAnyRole('USER', 'ADMIN', 'CA_USER')")
-    public ResponseEntity<CertificateDTO> createCertificate(@RequestBody CreateCertificateRequest request, Authentication authentication) throws Exception {
+    public ResponseEntity<CertificateResponse> createCertificate(@RequestBody CreateCertificateRequest request, Authentication authentication) throws Exception {
         logger.debug("p");
         Role role = RoleUtil.extraxtRole(authentication);
         logger.debug("p");
@@ -69,8 +69,8 @@ public class CertificateController {
         return ResponseEntity.status(HttpStatus.CREATED).body(certificateMapper.toDto(certificate));
     }
 
-//    private CertificateDTO convert(Certificate certificate){
-//        CertificateDTO dto = new CertificateDTO();
+//    private CertificateResponse convert(Certificate certificate){
+//        CertificateResponse dto = new CertificateResponse();
 //
 //        dto.setSerialNumber(certificate.getSerialNumber());
 //        dto.setType(certificate.getType() != null ? certificate.getType().name() : null);

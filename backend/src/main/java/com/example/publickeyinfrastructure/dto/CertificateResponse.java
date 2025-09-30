@@ -12,12 +12,17 @@ import java.util.Date;
 @AllArgsConstructor
 @Getter
 @Setter
-public class CertificateDTO {
+public class CertificateResponse {
     private String serialNumber;
     private CertificateType type;
     private Date issued;
     private Date expires;
     private String signatureAlgorithm;
-    private CertificateEntityDTO subject;
-    private CertificateEntityDTO issuer;
+    private String certificatePem;
+    private String subjectCN;
+    private String subjectO;
+    private String subjectOU;
+    private String issuerCN;
+    private String issuerO;
+    private String issuerOU;
 }
