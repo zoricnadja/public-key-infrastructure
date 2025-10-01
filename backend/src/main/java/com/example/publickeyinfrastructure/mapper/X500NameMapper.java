@@ -19,13 +19,10 @@ public class X500NameMapper {
     }
 
     public X500NameDTO toDto(CertificateEntity subject) {
-        logger.debug("mapiran entitet - x500 {}",mapper.map(subject, CertificateEntityDTO.class).toString());
         return mapper.map(subject, CertificateEntityDTO.class);
     }
 
     public CertificateEntity toEntity(X500NameDTO dto) {
-        logger.debug("mapiran x500 - enititet {}",mapper.map(dto, CertificateEntity.class).toString());
-
         return mapper.map(dto, CertificateEntity.class);
     }
 }

@@ -121,7 +121,6 @@ public class CertificateService {
             else
                 throw new IllegalArgumentException("You don't have permission to create Root CA Certificate");
         } else {
-            logger.debug("ovo je serijski {}", issuerSerialNumber);
             Certificate issuerCertificate = findBySerialNumber(issuerSerialNumber).orElseThrow(() -> new EntityNotFoundException("Certificate not found"));
             CertificateEntity issuer = certificateEntityRepository.findById(issuerCertificate.getSubject().getId()).orElseThrow(() -> new EntityNotFoundException("Issuer not found"));
             PrivateKey issuerPrivateKey = projectKeyStore.readPrivateKey(issuerCertificate.getSerialNumber()).orElseThrow(() -> new EntityNotFoundException("Private key not found"));

@@ -10,7 +10,6 @@ import org.springframework.stereotype.Component;
 @Component
 public class CertificateMapper {
 
-//    private static final Logger logger = LoggerFactory.getLogger(CertificateMapper.class);
     private final ModelMapper mapper;
     private final ExtensionMapper extensionMapper;
     private final X500NameMapper x500NameMapper;
@@ -40,7 +39,6 @@ public class CertificateMapper {
 
         return response;
     }
-
 
     public Certificate toEntity(CreateCertificateRequest request) {
         Certificate certificate = mapper.map(request, Certificate.class);

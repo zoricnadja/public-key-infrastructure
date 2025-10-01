@@ -2,7 +2,6 @@ package com.example.publickeyinfrastructure.mapper;
 
 import com.example.publickeyinfrastructure.config.Constants;
 import com.example.publickeyinfrastructure.dto.CertificateEntityDTO;
-import com.example.publickeyinfrastructure.dto.CreateCertificateRequest;
 import com.example.publickeyinfrastructure.model.CertificateEntity;
 import com.example.publickeyinfrastructure.util.KeyUtil;
 import org.modelmapper.ModelMapper;
@@ -41,13 +40,10 @@ public class CertificateEntityMapper {
     }
 
     public CertificateEntityDTO toDto(CertificateEntity entity) {
-        logger.debug("ovo certE->dto - {}", mapper.map(entity, CertificateEntityDTO.class));
-
         return mapper.map(entity, CertificateEntityDTO.class);
     }
 
     public CertificateEntity toEntity(CertificateEntityDTO dto) {
-        logger.debug("ovo dto->certEnt - {}", mapper.map(dto, CertificateEntity.class));
         return mapper.map(dto, CertificateEntity.class);
     }
 }

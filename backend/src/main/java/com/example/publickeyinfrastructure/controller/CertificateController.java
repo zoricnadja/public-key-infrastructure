@@ -5,7 +5,6 @@ import com.example.publickeyinfrastructure.dto.CreateCertificateRequest;
 import com.example.publickeyinfrastructure.mapper.CertificateMapper;
 import com.example.publickeyinfrastructure.model.Certificate;
 import com.example.publickeyinfrastructure.model.Role;
-import com.example.publickeyinfrastructure.model.User;
 import com.example.publickeyinfrastructure.repository.UserRepository;
 import com.example.publickeyinfrastructure.service.CertificateService;
 import com.example.publickeyinfrastructure.util.RoleUtil;
@@ -43,52 +42,19 @@ public class CertificateController {
     @PreAuthorize("hasAnyRole('ROLE_USER', 'ROLE_ADMIN', 'ROLE_CA_USER')")
     public ResponseEntity<List<CertificateResponse>> getIssuers(@AuthenticationPrincipal Jwt jwt) {
         String email = jwt.getClaimAsString("email");
-        User user = userRepository.findByEmail(email)
+        userRepository.findByEmail(email)
                 .orElseThrow(() -> new EntityNotFoundException(
                         "User not found with email: " + email));
 
         List<Certificate> caCertificates = certificateService.findAllIssuers();
-
-        logger.debug("svi issueri - {}", caCertificates.toString());
-//        List<CertificateResponse> response = caCertificates.stream()
-//                .map(this::convert)
-//                .toList();
-
         return ResponseEntity.ok(caCertificates.stream().map(certificateMapper::toDto).toList());
     }
-
 
     @PostMapping
     @PreAuthorize("hasAnyRole('USER', 'ADMIN', 'CA_USER')")
     public ResponseEntity<CertificateResponse> createCertificate(@RequestBody CreateCertificateRequest request, Authentication authentication) throws Exception {
         Role role = RoleUtil.extraxtRole(authentication);
         Certificate certificate = this.certificateService.createCertificate(certificateMapper.toEntity(request), role, request.getIssuerSerialNumber());
-        logger.debug("ovo je cert {}", certificate.toString());
         return ResponseEntity.status(HttpStatus.CREATED).body(certificateMapper.toDto(certificate));
     }
-
-//    private CertificateResponse convert(Certificate certificate){
-//        CertificateResponse dto = new CertificateResponse();
-//
-//        dto.setSerialNumber(certificate.getSerialNumber());
-//        dto.setType(certificate.getType() != null ? certificate.getType().name() : null);
-//        dto.setIssued(certificate.getIssued());
-//        dto.setExpires(certificate.getExpires());
-//        dto.setSignatureAlgorithm(certificate.getSignatureAlgorithm());
-//
-//        // Subject fields
-//        if (certificate.getSubject() != null) {
-//            dto.setSubjectCN(certificate.getSubject().getCommonName());
-//            dto.setSubjectO(certificate.getSubject().getOrganization());
-//            dto.setSubjectOU(certificate.getSubject().getOrganizationalUnit());
-//        }
-//
-//        // Issuer fields
-//        if (certificate.getIssuer() != null) {
-//            dto.setIssuerCN(certificate.getIssuer().getCommonName());
-//            dto.setIssuerO(certificate.getIssuer().getOrganization());
-//            dto.setIssuerOU(certificate.getIssuer().getOrganizationalUnit());
-//        }
-//        return dto;
-//    }
 }
