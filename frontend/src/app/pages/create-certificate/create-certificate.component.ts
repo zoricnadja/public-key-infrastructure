@@ -17,7 +17,6 @@ import { AuthService } from '../../auth/auth.service';
 export class CertificateCreateComponent implements OnInit {
   form: FormGroup;
   caCertificates: Certificate[] = [];
-  issuers: string[] = [];
   saving = false;
   isAdmin = false;
   result: any = null;
@@ -26,6 +25,7 @@ export class CertificateCreateComponent implements OnInit {
 
   // common extensions to choose from (friendly name + OID)
   commonExtensions = [
+    // TODO: remove this and handle on backend
     { name: 'BasicConstraints', oid: '2.5.29.19' },
     { name: 'KeyUsage', oid: '2.5.29.15' },
     { name: 'ExtendedKeyUsage', oid: '2.5.29.37' },
@@ -54,22 +54,19 @@ export class CertificateCreateComponent implements OnInit {
       extensions: this.fb.array([]),
       issued: [''],
       expires: ['', null],
-      type: ['END', Validators.required], 
-
+      type: ['END_ENTITY', Validators.required],
     });
   }
 
   ngOnInit(): void {
     this.loadIssuers();
     this.isAdmin = this.authService.getUserRoles().includes('admin');
-    console.log(this.isAdmin);
-    // default: add a BasicConstraints extension for CA selection UI (optional)
-    this.addExtension({
-      oid: '2.5.29.19',
-      name: 'BasicConstraints',
-      critical: true,
-      value: 'CA:false',
-    });
+    // this.addExtension({
+    //   oid: '2.5.29.19',
+    //   name: 'BasicConstraints',
+    //   isCritical: true,
+    //   value: 'CA=false',
+    // });
   }
 
   get extensions(): FormArray {
@@ -80,7 +77,7 @@ export class CertificateCreateComponent implements OnInit {
     const group = this.fb.group({
       oid: [data?.oid || '', Validators.required],
       name: [data?.name || ''],
-      critical: [data?.critical || false],
+      isCritical: [data?.isCritical || false],
       value: [data?.value || '', Validators.required],
     });
     this.extensions.push(group);
@@ -90,11 +87,11 @@ export class CertificateCreateComponent implements OnInit {
     this.extensions.removeAt(index);
   }
 
-  addCommonExtension(ext: { name: string; oid: string; critical?: boolean; value?: string }) {
+  addCommonExtension(ext: { name: string; oid: string; isCritical?: boolean; value?: string }) {
     this.addExtension({
       oid: ext.oid,
       name: ext.name,
-      critical: ext.critical,
+      isCritical: ext.isCritical,
       value: ext.value,
     });
   }
@@ -102,7 +99,7 @@ export class CertificateCreateComponent implements OnInit {
   loadIssuers() {
     this.service.getIssuers().subscribe({
       next: (certificates) => {
-        this.issuers = certificates.map((cert) => `${cert.subjectCN}-${cert.subjectO}`);
+        this.caCertificates = certificates;
       },
       error: () => (this.caCertificates = []),
     });
@@ -113,13 +110,13 @@ export class CertificateCreateComponent implements OnInit {
     this.error = null;
     const issuer = this.form.value.issuerCertificateAlias;
     let issuerValue;
-    console.log(issuer)
     if (this.isAdmin && issuer === '') {
       issuerValue = undefined;
     } else {
-      const index = this.issuers.findIndex(issuer);
+      const index = this.caCertificates.indexOf(issuer);
       issuerValue = this.caCertificates.at(index)?.serialNumber;
-
+      console.log(index);
+      console.log(this.caCertificates.at(index));
     }
     const payload: CreateCertificateRequestPayload = {
       issuerSerialNumber: issuerValue,

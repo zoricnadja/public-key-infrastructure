@@ -2,12 +2,45 @@
   <h3>Generate Certificate</h3>
 
   <form [formGroup]="form" (ngSubmit)="submit()">
+
     <div class="mb-3">
-      <label for="issuer" class="form-label">Issuer CA (alias) </label>
-      <select id="issuer" class="form-select" formControlName="issuerCertificateAlias">
-        <option value="">-- choose issuer --</option>
-        <option *ngFor="let a of issuers" [value]="a">{{ a }}</option>
-      </select>
+      <label class="form-label">Issuer CA</label>
+      <table class="table table-bordered table-hover">
+        <thead>
+          <tr>
+            <th></th>
+            <th>Serial Number</th>
+            <th>Type</th>
+            <th>Issued</th>
+            <th>Expires</th>
+            <th>Signature Algorithm</th>
+            <th>Subject CN</th>
+            <th>Subject O</th>
+            <th>Subject OU</th>
+            <th>Issuer CN</th>
+            <th>Issuer O</th>
+            <th>Issuer OU</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let cert of caCertificates; let i = index">
+            <td>
+              <input type="radio" [value]="caCertificates[i]" formControlName="issuerCertificateAlias" [checked]="form.value.issuerCertificateAlias === caCertificates[i]">
+            </td>
+            <td>{{ cert.serialNumber }}</td>
+            <td>{{ cert.type }}</td>
+            <td>{{ cert.issued | date:'yyyy-MM-dd' }}</td>
+            <td>{{ cert.expires | date:'yyyy-MM-dd' }}</td>
+            <td>{{ cert.signatureAlgorithm }}</td>
+            <td>{{ cert.subjectCN }}</td>
+            <td>{{ cert.subjectO }}</td>
+            <td>{{ cert.subjectOU }}</td>
+            <td>{{ cert.issuerCN }}</td>
+            <td>{{ cert.issuerO }}</td>
+            <td>{{ cert.issuerOU }}</td>
+          </tr>
+        </tbody>
+      </table>
       <div *ngIf="form.get('issuerCertificateAlias')?.touched && form.get('issuerCertificateAlias')?.invalid && !isAdmin" class="text-danger">
         Please select issuer
       </div>
@@ -18,7 +51,7 @@
       <select id="type" class="form-select" formControlName="type">
         <option value="ROOT">ROOT</option>
         <option value="INTERMEDIATE">INTERMEDIATE</option>
-        <option value="END">END</option>
+        <option value="END_ENTITY">END ENTITY</option>
       </select>
     </div>
 
@@ -96,7 +129,7 @@
               <div class="col-2"><label>Critical</label>
                 <select class="form-select" formControlName="critical"><option [value]="true">true</option><option [value]="false">false</option></select>
               </div>
-              <div class="col-4"><label>Value</label><input class="form-control" formControlName="value" placeholder="e.g. CA:true,pathLen:0 or DNS:example.com"></div>
+              <div class="col-4"><label>Value</label><input class="form-control" formControlName="value" placeholder="e.g. CA=true,pathLen=0 or DNS=example.com"></div>
             </div>
           </div>
           <div class="ms-2">

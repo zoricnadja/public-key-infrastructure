@@ -11,7 +11,7 @@ export interface SubjectPayload {
 export interface ExtensionPayload {
   oid: string;
   name?: string;
-  critical?: boolean;
+  isCritical?: boolean;
   value?: string;
 }
 
