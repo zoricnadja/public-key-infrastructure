@@ -61,9 +61,7 @@ public class CertificateController {
     @PostMapping
     @PreAuthorize("hasAnyRole('USER', 'ADMIN', 'CA_USER')")
     public ResponseEntity<CertificateResponse> createCertificate(@RequestBody CreateCertificateRequest request, Authentication authentication) throws Exception {
-        logger.debug("p");
         Role role = RoleUtil.extraxtRole(authentication);
-        logger.debug("p");
         Certificate certificate = this.certificateService.createCertificate(certificateMapper.toEntity(request), role, request.getIssuerSerialNumber());
         logger.debug("ovo je cert {}", certificate.toString());
         return ResponseEntity.status(HttpStatus.CREATED).body(certificateMapper.toDto(certificate));

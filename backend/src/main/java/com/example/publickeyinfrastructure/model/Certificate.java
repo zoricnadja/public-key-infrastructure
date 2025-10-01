@@ -19,15 +19,18 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.bouncycastle.asn1.ASN1ObjectIdentifier;
 import org.bouncycastle.asn1.x500.X500Name;
-import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo;
 import org.bouncycastle.cert.X509CertificateHolder;
-import org.bouncycastle.cert.X509v3CertificateBuilder;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
+import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder;
 import org.bouncycastle.operator.ContentSigner;
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.math.BigInteger;
+import java.security.PrivateKey;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -42,6 +45,7 @@ import java.util.List;
 @Table(name = "certificates")
 public class Certificate {
 
+    private static final Logger logger = LoggerFactory.getLogger(Certificate.class);
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -54,7 +58,6 @@ public class Certificate {
     @JoinColumn(name = "issuer_id")
     private CertificateEntity issuer;
 
-    //todo pseudo random niz brojeva
     @Column(unique = true)
     private String serialNumber;
 
@@ -85,8 +88,12 @@ public class Certificate {
     @JoinColumn(name = "certificate_id")
     private List<CertificateExtension> extensions = new ArrayList<>();
 
-    //todo do i need this?
     public void addExtension(CertificateExtension extension) {
+        if (extensions == null) {
+            extensions = new ArrayList<>();
+        } else if (!(extensions instanceof ArrayList)) {
+            extensions = new ArrayList<>(extensions);
+        }
         extensions.add(extension);
     }
 
@@ -99,22 +106,34 @@ public class Certificate {
         return issued.compareTo(now) <= 0 && expires.compareTo(now) > 0;
     }
 
-    public X509Certificate toX509Certificate() throws Exception {
+    public X509Certificate toX509Certificate(PrivateKey issuerPrivateKey) throws Exception {
         X500Name subjectName = subject.getX500Name();
         X500Name issuerName = issuer.getX500Name();
 
-        X509v3CertificateBuilder certBuilder = new X509v3CertificateBuilder(
+        JcaX509v3CertificateBuilder certBuilder = new JcaX509v3CertificateBuilder(
                 issuerName,
-                new BigInteger(serialNumber),
+                new BigInteger(serialNumber, 16),
                 issued,
                 expires,
                 subjectName,
-                SubjectPublicKeyInfo.getInstance(subject.getPublicKey().getEncoded())
+                subject.getPublicKey()
         );
 
-        ContentSigner signer = new JcaContentSignerBuilder(signatureAlgorithm)
+        if (extensions != null) {
+            for (CertificateExtension extension : extensions) {
+                ExtensionType type = extension.getExtensionType();
+                if (type == null || extension.getValue() == null) continue;
+
+                ASN1ObjectIdentifier oid = new ASN1ObjectIdentifier(type.getOid());
+                boolean critical = Boolean.TRUE.equals(extension.getIsCritical());
+
+                certBuilder.addExtension(oid, critical, extension.getValue());
+            }
+        }
+
+        ContentSigner signer = new JcaContentSignerBuilder(Constants.SIGNATURE_ALGORITHM)
                 .setProvider(Constants.PROVIDER)
-                .build(issuer.getPrivateKey());
+                .build(issuerPrivateKey);
 
         X509CertificateHolder holder = certBuilder.build(signer);
 

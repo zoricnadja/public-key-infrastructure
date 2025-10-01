@@ -65,6 +65,7 @@ public class ProjectKeyStore {
             throw new RuntimeException("Failed to load or create keystore", e);
         }
     }
+
     public void save(String filePath) {
         try (FileOutputStream fos = new FileOutputStream(filePath)) {
             keyStore.store(fos, getKeystorePassword());

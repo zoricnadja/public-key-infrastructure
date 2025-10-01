@@ -1,6 +1,5 @@
 package com.example.publickeyinfrastructure.model;
 
-import com.example.publickeyinfrastructure.keystore.ProjectKeyStore;
 import com.example.publickeyinfrastructure.util.KeyUtil;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -32,14 +31,6 @@ public class CertificateEntity {
 
     @Column
     private String commonName;
-
-    //todo romove
-    @Column
-    private String surname;
-
-    //todo romove
-    @Column
-    private String givenName;
 
     @Column
     private String organization;
@@ -75,18 +66,13 @@ public class CertificateEntity {
     @Transient
     private PublicKey publicKey;
 
-    //todo remove
-    @Column
-    private String privateKeyAlgorithm;
-
     @Column
     private String publicKeyAlgorithm;
 
     @Transient
-    private static String encryptionPassphrase; // Load securely at runtime
+    private static String encryptionPassphrase;
 
     public static void setEncryptionPassphrase(String passphrase) {
-        logger.debug("pass {}", passphrase);
         if (passphrase == null || passphrase.length() < 12) {
             throw new IllegalArgumentException("Encryption passphrase must be at least 12 characters long");
         }
@@ -139,8 +125,6 @@ public class CertificateEntity {
         return "CertificateEntity{" +
                 "id=" + id +
                 ", commonName='" + commonName + '\'' +
-                ", surname='" + surname + '\'' +
-                ", givenName='" + givenName + '\'' +
                 ", organization='" + organization + '\'' +
                 ", organizationalUnit='" + organizationalUnit + '\'' +
                 ", country='" + country + '\'' +
@@ -150,7 +134,6 @@ public class CertificateEntity {
                 ", encryptedPublicKey=" + Arrays.toString(encryptedPublicKey) +
                 ", publicKeySalt=" + Arrays.toString(publicKeySalt) +
                 ", publicKeyIv=" + Arrays.toString(publicKeyIv) +
-                ", privateKeyAlgorithm='" + privateKeyAlgorithm + '\'' +
                 ", publicKeyAlgorithm='" + publicKeyAlgorithm + '\'' +
                 '}';
     }

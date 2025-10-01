@@ -3,22 +3,23 @@ package com.example.publickeyinfrastructure.service;
 import com.example.publickeyinfrastructure.config.Constants;
 import com.example.publickeyinfrastructure.keystore.ProjectKeyStore;
 import com.example.publickeyinfrastructure.model.Certificate;
-import com.example.publickeyinfrastructure.model.CertificateExtension;
 import com.example.publickeyinfrastructure.model.CertificateType;
 import com.example.publickeyinfrastructure.model.ExtensionType;
 import com.example.publickeyinfrastructure.model.CertificateEntity;
 import com.example.publickeyinfrastructure.model.Role;
-import com.example.publickeyinfrastructure.model.User;
+import com.example.publickeyinfrastructure.repository.CertificateEntityRepository;
 import com.example.publickeyinfrastructure.repository.CertificateRepository;
 import jakarta.persistence.EntityNotFoundException;
+import org.bouncycastle.asn1.ASN1Primitive;
 import org.bouncycastle.asn1.x500.X500Name;
+import org.bouncycastle.asn1.x509.BasicConstraints;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.nio.charset.StandardCharsets;
+import java.math.BigInteger;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
@@ -26,7 +27,6 @@ import java.security.NoSuchProviderException;
 import java.security.PrivateKey;
 import java.security.SecureRandom;
 import java.security.cert.X509Certificate;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
@@ -36,14 +36,16 @@ public class CertificateService {
     @Value("${keystore.path}")
     private String keystorePath;
     private final CertificateRepository certificateRepository;
+    private final CertificateEntityRepository certificateEntityRepository;
 
     private static final Logger logger = LoggerFactory.getLogger(CertificateService.class);
 
     private final ProjectKeyStore projectKeyStore;
 
     @Autowired
-    public CertificateService(CertificateRepository certificateRepository, ProjectKeyStore projectKeyStore) {
+    public CertificateService(CertificateRepository certificateRepository, CertificateEntityRepository certificateEntityRepository, ProjectKeyStore projectKeyStore) {
         this.certificateRepository = certificateRepository;
+        this.certificateEntityRepository = certificateEntityRepository;
         this.projectKeyStore = projectKeyStore;
     }
 
@@ -65,101 +67,37 @@ public class CertificateService {
         }
     }
 
-    public Certificate findBySerialNumber(String serialNumber){
-        return certificateRepository.findBySerialNumber(serialNumber).orElseThrow(() -> new EntityNotFoundException("Certificate not found"));
+    public Optional<Certificate> findBySerialNumber(String serialNumber){
+        return certificateRepository.findBySerialNumber(serialNumber);
     }
 
     public List<Certificate> findAllIssuers(){
         return certificateRepository.findAllByTypeIn(List.of(CertificateType.INTERMEDIATE, CertificateType.ROOT));
     }
 
-//    public List<Certificate> getCACertificates(User user) {
-//        List<CertificateType> allowedTypes = List.of(CertificateType.ROOT, CertificateType.INTERMEDIATE);
-//
-//        return switch (user.getRole()) {
-//            case ADMIN ->
-//                // Root admin može koristiti sve validne CA sertifikate
-//                    certificateRepository.findValidCAForAdminAndCA(allowedTypes, null);
-//            case CA_USER ->
-//                // CA korisnik samo iz svoje organizacije
-//                    certificateRepository.findValidCAForAdminAndCA(allowedTypes, user.getOrganization());
-//            case USER ->
-//                // Običan korisnik samo za End-Entity (koristi custom query)
-//                    certificateRepository.findValidCAForRegularUser(user.getOrganization());
-//            default -> List.of();
-//        };
-//    }
-
-    /**
-     * Provera digitalnog potpisa sertifikata
-     */
-//    public boolean checkCertificateChain(Certificate cert) {
-//        try {
-//            if (cert == null || cert.getCertificateEntity() == null) {
-//                return false;
-//            }
-//
-//            X509Certificate certHolder = cert.toX509Certificate();
-//
-//            PublicKey issuerPublicKey = cert.getCertificateEntity().getPublicKey();
-//            if (issuerPublicKey == null) return false;
-//
-//            ContentVerifierProvider verifier = new JcaContentVerifierProviderBuilder()
-//                    .build(issuerPublicKey);
-//            if (!certHolder.isSignatureValid(verifier)) {
-//                return false;
-//            }
-//
-//            if (cert.getType() == CertificateType.ROOT) {
-//                return cert.getCertificateEntity().getX500Name().equals(cert.getCertificateEntity().getX500Name());
-//            }
-//
-//            Certificate issuerCert = certificateRepository.findByCertificateEntity(cert.getCertificateEntity());
-//            if (issuerCert == null) return false;
-//
-//            return checkCertificateChain(issuerCert);
-//
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//            return false;
-//        }
-//    }
-
     public boolean checkChain(Certificate certificate) {
         try {
             X500Name subjectName = certificate.getSubject().getX500Name();
-            logger.debug("ovo je - {}", subjectName.toString());
             X500Name issuerName = certificate.getIssuer().getX500Name();
-            logger.debug("ovo je - {}", issuerName.toString());
-
+            PrivateKey issuerPrivateKey = projectKeyStore.readPrivateKey(certificate.getSerialNumber()).orElseThrow(() -> new EntityNotFoundException("Private key not found"));
             if (certificate.getType() == CertificateType.ROOT && subjectName.equals(issuerName)) {
-                logger.debug("ovo je - root deo" );
-                certificate.toX509Certificate().verify(certificate.getSubject().getPublicKey());
+                certificate.toX509Certificate(issuerPrivateKey).verify(certificate.getSubject().getPublicKey());
                 return true;
             }
 
             Optional<Certificate> parentOpt = certificateRepository.findBySubject_CommonName(issuerName.toString());
 
             if (parentOpt.isEmpty()) return false;
-            logger.debug("ovo je - parent deo" );
 
             Certificate parent = parentOpt.get();
-            logger.debug("ovo je - {}", parent.toString());
-
-            X509Certificate parentCert = parent.toX509Certificate();
-            logger.debug("ovo je - {}", parentCert.toString());
+            X509Certificate parentCert = parent.toX509Certificate(issuerPrivateKey);
 
             if (parent.isDateValid()) return false;
-            logger.debug("ovo je - validan deo" );
 
             if (Boolean.TRUE.equals(parent.getIsWithdrawn())) return false;
-            logger.debug("ovo je - validan2 deo" );
 
             parentCert.verify(parent.getSubject().getPublicKey());
-            logger.debug("ovo je - validan3 deo" );
-
             return checkChain(parent);
-
         } catch (Exception e) {
             return false;
         }
@@ -167,62 +105,46 @@ public class CertificateService {
 
 
     public Certificate createCertificate(Certificate request, Role subjectRole, String issuerSerialNumber) throws Exception {
-        CertificateEntity issuer;
         CertificateEntity subject = request.getSubject();
-        logger.debug("ovo je - {}", subject.toString());
         request.setSubject(subject);
-        boolean isCA = checkIsCA(request);
-        logger.debug("ovo je - {}", isCA);
+        request.setSignatureAlgorithm(Constants.SIGNATURE_ALGORITHM);
+        BigInteger serial = new BigInteger(128, new SecureRandom());
+        request.setSerialNumber(serial.toString(16).toUpperCase());
         X509Certificate xCertificate;
+        projectKeyStore.loadOrCreate(keystorePath);
+
         if(request.getType().equals(CertificateType.ROOT)) {
-            if(isCA && subjectRole.equals(Role.ADMIN)) {
+            if(subjectRole.equals(Role.ADMIN)) {
                 createRootCertificateEntities(request);
-                xCertificate = CertificateGenerator.generateRootCA(request);
+                xCertificate = CertificateGenerator.generateX509Certificate(request, request.getSubject().getPrivateKey(), request.getSubject().getPublicKey());
             }
             else
                 throw new IllegalArgumentException("You don't have permission to create Root CA Certificate");
         } else {
-            //todo subject key
-            issuer = generateCertificateEntity(request);
-            Certificate issuerCertificate = findBySerialNumber(issuerSerialNumber);
+            logger.debug("ovo je serijski {}", issuerSerialNumber);
+            Certificate issuerCertificate = findBySerialNumber(issuerSerialNumber).orElseThrow(() -> new EntityNotFoundException("Certificate not found"));
+            CertificateEntity issuer = certificateEntityRepository.findById(issuerCertificate.getSubject().getId()).orElseThrow(() -> new EntityNotFoundException("Issuer not found"));
+            PrivateKey issuerPrivateKey = projectKeyStore.readPrivateKey(issuerCertificate.getSerialNumber()).orElseThrow(() -> new EntityNotFoundException("Private key not found"));
+            issuer.setPrivateKey(issuerPrivateKey);
+            //todo check issuer
             request.setIssuer(issuer);
-            if (request.getType().equals(CertificateType.INTERMEDIATE) && isCA && (subjectRole.equals(Role.ADMIN) || subjectRole.equals(Role.CA_USER)))
-                xCertificate = CertificateGenerator.generateIntermediateCA(request, issuerCertificate.toX509Certificate(), issuer.getPrivateKey());
-            else
-                xCertificate = CertificateGenerator.generateCertificate(request, issuerCertificate.toX509Certificate(), issuer.getPrivateKey());
+            KeyPair subjectKeyPair = this.generateKeyPair();
+            request.getSubject().setPublicKey(subjectKeyPair.getPublic());
+            request.getSubject().setPrivateKey(subjectKeyPair.getPrivate());
+            if (request.getType().equals(CertificateType.INTERMEDIATE) && subjectRole.equals(Role.USER))
+                throw new IllegalCallerException("You don't have permission for intermediate certificates");
+            xCertificate = CertificateGenerator.generateX509Certificate(request, issuerPrivateKey, issuer.getPublicKey());
         }
-
-        request.setSerialNumber(xCertificate.getSerialNumber().toString());
         request.setSignature(xCertificate.getSignature());
-        logger.debug("ovo je - {}", request);
+        request.setSerialNumber(xCertificate.getSerialNumber().toString());
+        //todo only save to keystore
         request = certificateRepository.save(request);
-        logger.debug("ovo je - {}", request);
-        projectKeyStore.loadOrCreate(keystorePath); // ucitaj postojeci ili kreiraj novi KS
-        projectKeyStore.writeKeyEntry(String.format("Cert-%d", request.getIssuer().getId()), request.getIssuer().getPrivateKey(), xCertificate);
+        projectKeyStore.writeKeyEntry(String.format(request.getSerialNumber()), request.getSubject().getPrivateKey(), xCertificate);
         projectKeyStore.save(keystorePath);
-
         return request;
     }
 
-    private CertificateEntity generateCertificateEntity(Certificate request){
-
-        CertificateEntity issuer = certificateRepository.findBySubject_CommonName(request.getSubject().getCommonName()).orElseThrow(() -> new EntityNotFoundException("Issuer doesn't exist")).getIssuer();
-        Optional<PrivateKey> issuerKey = projectKeyStore.readPrivateKey(request.getSerialNumber());
-        CertificateEntity generatedCertificateEntity = new CertificateEntity();
-        generatedCertificateEntity.setEmail(issuer.getEmail());
-        generatedCertificateEntity.setLocality(issuer.getLocality());
-        generatedCertificateEntity.setOrganization(issuer.getOrganization());
-        generatedCertificateEntity.setOrganizationalUnit(issuer.getOrganizationalUnit());
-        generatedCertificateEntity.setCountry(issuer.getCountry());
-        generatedCertificateEntity.setCommonName(issuer.getCommonName());
-        generatedCertificateEntity.setState(issuer.getState());
-        generatedCertificateEntity.setPrivateKey(issuerKey.get());
-        generatedCertificateEntity.setPublicKey(issuer.getPublicKey());
-
-        return generatedCertificateEntity;
-    }
-    private Certificate createRootCertificateEntities(Certificate certificate){
-
+    private void createRootCertificateEntities(Certificate certificate){
         CertificateEntity issuer = new CertificateEntity();
         CertificateEntity subject = certificate.getSubject();
         KeyPair keyPair = this.generateKeyPair();
@@ -240,16 +162,23 @@ public class CertificateService {
 
         certificate.setIssuer(issuer);
         certificate.setSubject(subject);
-        return certificate;
     }
 
     private boolean checkIsCA(Certificate certificate) {
         if (certificate == null || certificate.getExtensions() == null) return false;
 
-        Optional<CertificateExtension> extension = certificate.getExtensions().stream()
-                .filter(ext -> ext.getExtensionType() == ExtensionType.BASIC_CONSTRAINTS)
-                .findFirst();
-        return extension.isPresent() && (new String(extension.get().getValue(), StandardCharsets.UTF_8)).equals("CA:true");
-
+        return certificate.getExtensions().stream()
+                .filter(ext -> ext.getExtensionType() == ExtensionType.BASIC_CONSTRAINTS && ext.getValue() != null)
+                .findFirst()
+                .map(ext -> {
+                    try {
+                        ASN1Primitive asn1 = ASN1Primitive.fromByteArray(ext.getValue());
+                        BasicConstraints bc = BasicConstraints.getInstance(asn1);
+                        return bc.isCA();
+                    } catch (Exception e) {
+                        return false;
+                    }
+                })
+                .orElse(false);
     }
 }

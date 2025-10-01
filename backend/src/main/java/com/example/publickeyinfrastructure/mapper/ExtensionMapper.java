@@ -16,6 +16,7 @@ public class ExtensionMapper {
     public ExtensionMapper(ModelMapper mapper) {
         this.mapper = mapper;
     }
+    //todo please girl, use mapper
 
     public ExtensionDTO toDto(CertificateExtension extension) {
         ExtensionDTO dto = new ExtensionDTO();
@@ -23,7 +24,6 @@ public class ExtensionMapper {
         dto.setOid(extension.getExtensionType().getOid());
         dto.setIsCritical(extension.getIsCritical());
 
-        // Convert byte[] to String using UTF-8
         if (extension.getValue() != null) {
             dto.setValue(new String(extension.getValue(), StandardCharsets.UTF_8));
         }
@@ -36,7 +36,6 @@ public class ExtensionMapper {
         extension.setExtensionType(ExtensionType.fromOid(dto.getOid()));
         extension.setIsCritical(dto.getIsCritical());
 
-        // Convert String to byte[] using UTF-8
         if (dto.getValue() != null && !dto.getValue().isEmpty()) {
             extension.setValue(dto.getValue().getBytes(StandardCharsets.UTF_8));
         }
