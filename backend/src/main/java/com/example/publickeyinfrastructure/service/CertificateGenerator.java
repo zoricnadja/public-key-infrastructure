@@ -42,16 +42,15 @@ public class CertificateGenerator {
         return cert;
     }
 
-    private static void addBasicConstraints(Certificate certificate) throws IOException {
-        BasicConstraints bc;
+    private static void addBasicConstraints(Certificate certificate){
+        StringBuilder value = new StringBuilder("CA=");
         switch (certificate.getType()) {
-            case ROOT, INTERMEDIATE -> bc = new BasicConstraints(true);
-            case END_ENTITY -> bc = new BasicConstraints(false);
+            case ROOT, INTERMEDIATE -> value.append("true");
+            case END_ENTITY -> value.append("false");
             default -> throw new IllegalStateException("Unknown type: " + certificate.getType());
         }
-        byte[] value = bc.getEncoded();
         certificate.addExtension(
-                new CertificateExtension(null, true, bc.getEncoded(), ExtensionType.BASIC_CONSTRAINTS)
+                new CertificateExtension(null, true, value.toString(), ExtensionType.BASIC_CONSTRAINTS)
         );
     }
 

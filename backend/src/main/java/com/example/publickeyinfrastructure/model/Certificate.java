@@ -1,6 +1,7 @@
 package com.example.publickeyinfrastructure.model;
 
 import com.example.publickeyinfrastructure.config.Constants;
+import com.example.publickeyinfrastructure.util.ExtensionUtil;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -119,16 +120,10 @@ public class Certificate {
                 subject.getPublicKey()
         );
 
-        if (extensions != null) {
-            for (CertificateExtension extension : extensions) {
-                ExtensionType type = extension.getExtensionType();
-                if (type == null || extension.getValue() == null) continue;
+        ExtensionUtil extensionUtil = new ExtensionUtil(issuer.getPublicKey(), subject.getPublicKey());
 
-                ASN1ObjectIdentifier oid = new ASN1ObjectIdentifier(type.getOid());
-                boolean critical = Boolean.TRUE.equals(extension.getIsCritical());
-
-                certBuilder.addExtension(oid, critical, extension.getValue());
-            }
+        for (CertificateExtension ext : extensions) {
+            extensionUtil.addExtension(certBuilder, ext.getExtensionType().getOid(), ext.getIsCritical(), ext.getValue());
         }
 
         ContentSigner signer = new JcaContentSignerBuilder(Constants.SIGNATURE_ALGORITHM)

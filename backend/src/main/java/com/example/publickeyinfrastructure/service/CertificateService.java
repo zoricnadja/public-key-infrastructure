@@ -162,22 +162,4 @@ public class CertificateService {
         certificate.setIssuer(issuer);
         certificate.setSubject(subject);
     }
-
-    private boolean checkIsCA(Certificate certificate) {
-        if (certificate == null || certificate.getExtensions() == null) return false;
-
-        return certificate.getExtensions().stream()
-                .filter(ext -> ext.getExtensionType() == ExtensionType.BASIC_CONSTRAINTS && ext.getValue() != null)
-                .findFirst()
-                .map(ext -> {
-                    try {
-                        ASN1Primitive asn1 = ASN1Primitive.fromByteArray(ext.getValue());
-                        BasicConstraints bc = BasicConstraints.getInstance(asn1);
-                        return bc.isCA();
-                    } catch (Exception e) {
-                        return false;
-                    }
-                })
-                .orElse(false);
-    }
 }

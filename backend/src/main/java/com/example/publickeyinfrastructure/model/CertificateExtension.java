@@ -6,8 +6,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.util.Arrays;
-
 @Setter
 @Getter
 @AllArgsConstructor
@@ -24,8 +22,8 @@ public class CertificateExtension {
     @Column
     private Boolean isCritical = false;
 
-    @Lob
-    private byte[] value;
+    @Column
+    private String value;
 
     @Enumerated(EnumType.STRING)
     @Column
@@ -38,7 +36,7 @@ public class CertificateExtension {
                 "id=" + id +
                 ", isCritical=" + isCritical +
                 ", extensionType=" + extensionType.getDisplayName() +
-                ", valueString='" + Arrays.toString(value) + '\'' +
+                ", valueString='" + value + '\'' +
                 '}';
     }
 }
