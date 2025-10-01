@@ -14,9 +14,11 @@ import org.springframework.stereotype.Component;
 
 import java.io.*;
 import java.security.*;
+import java.security.cert.Certificate;
 import java.security.cert.CertificateEncodingException;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
+import java.util.Enumeration;
 import java.util.Optional;
 
 @Component
@@ -107,6 +109,24 @@ public class ProjectKeyStore {
             logger.error("Failed to read private key '{}'", alias, e);
             return Optional.empty();
         }
+    }
+
+    public Optional<X509Certificate> getCertificateBySerialNumber(String serialNumber) {
+        try {
+            Enumeration<String> aliases = keyStore.aliases();
+            while (aliases.hasMoreElements()) {
+                String alias = aliases.nextElement();
+                Certificate cert = keyStore.getCertificate(alias);
+                if (cert instanceof X509Certificate x509Cert) {
+                    if (x509Cert.getSerialNumber().toString().equals(serialNumber)) {
+                        return Optional.of(x509Cert);
+                    }
+                }
+            }
+        } catch (KeyStoreException e) {
+            logger.error("Failed to search certificate by serial number '{}'", serialNumber, e);
+        }
+        return Optional.empty();
     }
 
     public Optional<CertificateEntity> readCertificateEntity(String alias) {
