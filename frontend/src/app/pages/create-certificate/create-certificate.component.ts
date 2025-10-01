@@ -26,7 +26,7 @@ export class CertificateCreateComponent implements OnInit {
   // common extensions to choose from (friendly name + OID)
   commonExtensions = [
     // TODO: remove this and handle on backend
-    { name: 'BasicConstraints', oid: '2.5.29.19' },
+    // { name: 'BasicConstraints', oid: '2.5.29.19' },
     { name: 'KeyUsage', oid: '2.5.29.15' },
     { name: 'ExtendedKeyUsage', oid: '2.5.29.37' },
     { name: 'SubjectAltName', oid: '2.5.29.17' },
@@ -40,20 +40,29 @@ export class CertificateCreateComponent implements OnInit {
     private service: CertificateCreateService,
     private authService: AuthService,
   ) {
+    const futureDateValidator = (control: any) => {
+      if (!control.value) return null;
+      const inputDate = new Date(control.value);
+      const now = new Date();
+      inputDate.setHours(0, 0, 0, 0);
+      now.setHours(0, 0, 0, 0);
+      return inputDate > now ? null : { notFutureDate: true };
+    };
+
     this.form = this.fb.group({
       issuerCertificateAlias: ['', null],
       subject: this.fb.group({
-        commonName: ['', null],
-        organization: ['', null],
-        organizationalUnit: [''],
-        country: [''],
-        state: [''],
-        locality: [''],
-        email: ['', null],
+        commonName: ['', Validators.required],
+        organization: ['', Validators.required],
+        organizationalUnit: ['', Validators.required],
+        country: ['', Validators.required],
+        state: ['', Validators.required],
+        locality: ['', Validators.required],
+        email: ['', Validators.email],
       }),
       extensions: this.fb.array([]),
       issued: [''],
-      expires: ['', null],
+      expires: ['', [Validators.required, futureDateValidator]],
       type: ['END_ENTITY', Validators.required],
     });
   }
@@ -61,12 +70,6 @@ export class CertificateCreateComponent implements OnInit {
   ngOnInit(): void {
     this.loadIssuers();
     this.isAdmin = this.authService.getUserRoles().includes('admin');
-    // this.addExtension({
-    //   oid: '2.5.29.19',
-    //   name: 'BasicConstraints',
-    //   isCritical: true,
-    //   value: 'CA=false',
-    // });
   }
 
   get extensions(): FormArray {
@@ -87,13 +90,52 @@ export class CertificateCreateComponent implements OnInit {
     this.extensions.removeAt(index);
   }
 
+  // addCommonExtension(ext: { name: string; oid: string; isCritical?: boolean; value?: string }) {
+  //   this.addExtension({
+  //     oid: ext.oid,
+  //     name: ext.name,
+  //     isCritical: ext.isCritical,
+  //     value: ext.value,
+  //   });
+  // }
+
   addCommonExtension(ext: { name: string; oid: string; isCritical?: boolean; value?: string }) {
+    let defaultValue = '';
+
+    switch (ext.name) {
+      case 'KeyUsage':
+        defaultValue = 'digitalSignature,keyEncipherment';
+        break;
+
+      case 'ExtendedKeyUsage':
+        defaultValue = 'serverAuth,clientAuth';
+        break;
+
+      case 'SubjectAltName':
+        defaultValue = 'DNS=example.com,IP=127.0.0.1,email=user@example.com';
+        break;
+
+      case 'AuthorityKeyIdentifier':
+      case 'SubjectKeyIdentifier':
+        defaultValue = 'auto';
+        break;
+
+      case 'CRLDistributionPoints':
+        defaultValue = 'http://example.com/crl.pem';
+        break;
+    }
+
     this.addExtension({
       oid: ext.oid,
       name: ext.name,
-      isCritical: ext.isCritical,
-      value: ext.value,
+      isCritical: ext.isCritical ?? true,
+      value: defaultValue,
     });
+  }
+
+  getPlaceholder(value: string): string {
+    if (!value) return 'Enter extension value';
+    return value;
   }
 
   loadIssuers() {
@@ -106,20 +148,20 @@ export class CertificateCreateComponent implements OnInit {
   }
 
   submit() {
-    this.saving = true;
-    this.error = null;
-    const issuer = this.form.value.issuerCertificateAlias;
-    let issuerValue;
-    if (this.isAdmin && issuer === '') {
-      issuerValue = undefined;
-    } else {
-      const index = this.caCertificates.indexOf(issuer);
-      issuerValue = this.caCertificates.at(index)?.serialNumber;
-      console.log(index);
-      console.log(this.caCertificates.at(index));
+    this.form.markAllAsTouched();
+
+    if (this.form.invalid) {
+      this.error = 'Please fix the errors before generating the certificate.';
+      return;
+    }
+    let issuer = this.form.value.issuerCertificateAlias;
+    if (this.isAdmin && issuer === '') issuer = undefined;
+    if (!issuer && !this.isAdmin) {
+      this.error = 'Please select issuer';
+      return;
     }
     const payload: CreateCertificateRequestPayload = {
-      issuerSerialNumber: issuerValue,
+      issuerSerialNumber: issuer?.serialNumber,
       subject: this.form.value.subject,
       extensions: this.form.value.extensions,
       issued: this.form.value.issued
