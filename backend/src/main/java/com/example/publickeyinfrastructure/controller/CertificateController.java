@@ -2,11 +2,13 @@ package com.example.publickeyinfrastructure.controller;
 
 import com.example.publickeyinfrastructure.dto.CertificateResponse;
 import com.example.publickeyinfrastructure.dto.CreateCertificateRequest;
+import com.example.publickeyinfrastructure.dto.RevocationRequest;
 import com.example.publickeyinfrastructure.mapper.CertificateMapper;
 import com.example.publickeyinfrastructure.model.Certificate;
 import com.example.publickeyinfrastructure.model.Role;
 import com.example.publickeyinfrastructure.repository.UserRepository;
 import com.example.publickeyinfrastructure.service.CertificateService;
+import com.example.publickeyinfrastructure.service.RevocationService;
 import com.example.publickeyinfrastructure.util.RoleUtil;
 import jakarta.persistence.EntityNotFoundException;
 import org.slf4j.Logger;
@@ -30,12 +32,19 @@ public class CertificateController {
     private final CertificateService certificateService;
     private final CertificateMapper certificateMapper;
     private final UserRepository userRepository;
+    private final RevocationService revocationService;
 
     @Autowired
-    public CertificateController(CertificateService certificateService, CertificateMapper certificateMapper, UserRepository userRepository) {
+    public CertificateController(
+            CertificateService certificateService,
+            CertificateMapper certificateMapper,
+            UserRepository userRepository,
+            RevocationService revocationService
+    ) {
         this.certificateService = certificateService;
         this.certificateMapper = certificateMapper;
         this.userRepository = userRepository;
+        this.revocationService = revocationService;
     }
 
     @GetMapping("/issuers")
@@ -56,5 +65,32 @@ public class CertificateController {
         Role role = RoleUtil.extraxtRole(authentication);
         Certificate certificate = this.certificateService.createCertificate(certificateMapper.toEntity(request), role, request.getIssuerSerialNumber());
         return ResponseEntity.status(HttpStatus.CREATED).body(certificateMapper.toDto(certificate));
+    }
+
+    @PostMapping("/revoke")
+    @PreAuthorize("hasRole('ROLE_ADMIN')")
+    public ResponseEntity<String> revokeCertificate(@RequestBody RevocationRequest request) {
+        try {
+            this.revocationService.revokeCertificate(request.getSerialNumber(), request.getReason());
+            return ResponseEntity.ok("Certificate with serial number " + request.getSerialNumber() + " has been revoked.");
+        } catch (EntityNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        } catch (SecurityException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
+        } catch (Exception e) {
+            logger.error("Error revoking certificate: ", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An error occurred while revoking the certificate.");
+        }
+    }
+
+    @GetMapping("/is-revoked")
+    @PreAuthorize("hasAnyRole('ROLE_USER', 'ROLE_ADMIN', 'ROLE_CA_USER')")
+    public ResponseEntity<String> isCertificateRevoked(@RequestParam String serialNumber) {
+        boolean isRevoked = this.revocationService.isCertificateRevoked(serialNumber);
+        if (isRevoked) {
+            return ResponseEntity.ok("Certificate with serial number " + serialNumber + " is revoked.");
+        } else {
+            return ResponseEntity.ok("Certificate with serial number " + serialNumber + " is not revoked.");
+        }
     }
 }
