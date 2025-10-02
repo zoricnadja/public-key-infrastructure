@@ -8,6 +8,7 @@ import com.example.publickeyinfrastructure.model.CertificateEntity;
 import com.example.publickeyinfrastructure.model.Role;
 import com.example.publickeyinfrastructure.model.User;
 import com.example.publickeyinfrastructure.repository.CertificateRepository;
+import com.example.publickeyinfrastructure.repository.RevokedCertificateRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,15 +35,17 @@ public class CertificateService {
     @Value("${keystore.path}")
     private String keystorePath;
     private final CertificateRepository certificateRepository;
+    private final RevokedCertificateRepository revokedCertificateRepository;
 
     private static final Logger logger = LoggerFactory.getLogger(CertificateService.class);
 
     private final ProjectKeyStore projectKeyStore;
 
     @Autowired
-    public CertificateService(CertificateRepository certificateRepository, ProjectKeyStore projectKeyStore) {
+    public CertificateService(CertificateRepository certificateRepository, ProjectKeyStore projectKeyStore, RevokedCertificateRepository revokedCertificateRepository) {
         this.certificateRepository = certificateRepository;
         this.projectKeyStore = projectKeyStore;
+        this.revokedCertificateRepository = revokedCertificateRepository;
     }
 
     public KeyPair generateKeyPair() {
@@ -83,6 +86,10 @@ public class CertificateService {
         return projectKeyStore.findUnassignedCACertificates(serialNumbers);
     }
 
+    public boolean isRevoked(X509Certificate certificate) {
+        return revokedCertificateRepository.existsBySerialNumber(certificate.getSerialNumber().toString());
+    }
+
     private void checkChain(X509Certificate certificate) throws Exception {
         X509Certificate currentCert = certificate;
 
@@ -92,6 +99,10 @@ public class CertificateService {
             if (isSelfSigned(currentCert)) {
                 currentCert.verify(currentCert.getPublicKey());
                 break;
+            }
+
+            if (revokedCertificateRepository.existsBySerialNumber(currentCert.getSerialNumber().toString())) {
+                throw new SecurityException("Certificate with serial number " + currentCert.getSerialNumber() + " is revoked.");
             }
 
             X509Certificate finalCurrentCert = currentCert;
