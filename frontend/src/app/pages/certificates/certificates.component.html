@@ -16,6 +16,7 @@
         <th>Issuer CN</th>
         <th>Issuer O</th>
         <th>Issuer OU</th>
+        <th>Actions</th>
       </tr>
     </thead>
     <tbody>
@@ -31,6 +32,12 @@
         <td>{{ cert.issuerCN }}</td>
         <td>{{ cert.issuerO }}</td>
         <td>{{ cert.issuerOU }}</td>
+        <td class="d-flex align-items-center gap-2">
+          <select class="form-select form-select-sm w-auto" [(ngModel)]="selectedReasons[cert.serialNumber]">
+            <option *ngFor="let reason of revocationReasons" [value]="reason.value">{{ reason.label }}</option>
+          </select>
+          <button class="btn btn-danger btn-sm" (click)="revokeCertificate(cert)">Revoke</button>
+        </td>
       </tr>
     </tbody>
   </table>
