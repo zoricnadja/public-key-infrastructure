@@ -4,6 +4,7 @@ import com.example.publickeyinfrastructure.dto.CertificateResponse;
 import com.example.publickeyinfrastructure.dto.CreateCertificateRequest;
 import com.example.publickeyinfrastructure.mapper.CertificateMapper;
 import com.example.publickeyinfrastructure.model.Certificate;
+import com.example.publickeyinfrastructure.model.CertificateType;
 import com.example.publickeyinfrastructure.model.Role;
 import com.example.publickeyinfrastructure.repository.UserRepository;
 import com.example.publickeyinfrastructure.service.CertificateService;
@@ -21,7 +22,9 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 
+import java.security.cert.X509Certificate;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/certificates")
@@ -46,15 +49,22 @@ public class CertificateController {
                 .orElseThrow(() -> new EntityNotFoundException(
                         "User not found with email: " + email));
 
-        List<Certificate> caCertificates = certificateService.findAllIssuers();
-        return ResponseEntity.ok(caCertificates.stream().map(certificateMapper::toDto).toList());
+        Map<CertificateType, List<X509Certificate>> caCertificates = certificateService.findAllIssuers();
+
+        return ResponseEntity.ok(
+                caCertificates.entrySet().stream()
+                        .flatMap(entry -> entry.getValue().stream()
+                                .map(cert -> certificateMapper.toDto(entry.getKey(), cert)))
+                        .toList()
+        );
+
     }
 
     @PostMapping
     @PreAuthorize("hasAnyRole('USER', 'ADMIN', 'CA_USER')")
     public ResponseEntity<CertificateResponse> createCertificate(@RequestBody CreateCertificateRequest request, Authentication authentication) throws Exception {
         Role role = RoleUtil.extraxtRole(authentication);
-        Certificate certificate = this.certificateService.createCertificate(certificateMapper.toEntity(request), role, request.getIssuerSerialNumber());
+        Certificate certificate = this.certificateService.createCertificate(certificateMapper.toEntity(request), role, request.getIssuerSerialNumber(), request.getIssuerCertificateType());
         return ResponseEntity.status(HttpStatus.CREATED).body(certificateMapper.toDto(certificate));
     }
 }

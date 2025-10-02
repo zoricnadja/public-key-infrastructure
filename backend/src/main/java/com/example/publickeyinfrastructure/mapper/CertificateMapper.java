@@ -3,9 +3,18 @@ package com.example.publickeyinfrastructure.mapper;
 import com.example.publickeyinfrastructure.dto.CertificateResponse;
 import com.example.publickeyinfrastructure.dto.CreateCertificateRequest;
 import com.example.publickeyinfrastructure.model.Certificate;
+import com.example.publickeyinfrastructure.model.CertificateType;
+import org.bouncycastle.asn1.ASN1ObjectIdentifier;
+import org.bouncycastle.asn1.x500.RDN;
+import org.bouncycastle.asn1.x500.X500Name;
+import org.bouncycastle.asn1.x500.style.BCStyle;
+import org.bouncycastle.asn1.x500.style.IETFUtils;
+import org.bouncycastle.cert.jcajce.JcaX509CertificateHolder;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+
+import java.security.cert.X509Certificate;
 
 @Component
 public class CertificateMapper {
@@ -38,6 +47,46 @@ public class CertificateMapper {
         }
 
         return response;
+    }
+    public CertificateResponse toDto(CertificateType type, X509Certificate certificate) {
+
+        CertificateResponse response = this.toDto(certificate);
+        response.setType(type);
+        return response;
+    }
+
+    public CertificateResponse toDto(X509Certificate cert) {
+        CertificateResponse response = new CertificateResponse();
+        try {
+            JcaX509CertificateHolder holder = new JcaX509CertificateHolder(cert);
+            X500Name subjectName = holder.getSubject();
+            X500Name issuerName = holder.getIssuer();
+
+            response.setSerialNumber(cert.getSerialNumber().toString());
+            response.setIssued(cert.getNotBefore());
+            response.setExpires(cert.getNotAfter());
+            response.setSignatureAlgorithm(cert.getSigAlgName());
+
+            response.setSubjectCN(getRDN(subjectName, BCStyle.CN));
+            response.setSubjectO(getRDN(subjectName, BCStyle.O));
+            response.setSubjectOU(getRDN(subjectName, BCStyle.OU));
+
+            response.setIssuerCN(getRDN(issuerName, BCStyle.CN));
+            response.setIssuerO(getRDN(issuerName, BCStyle.O));
+            response.setIssuerOU(getRDN(issuerName, BCStyle.OU));
+
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to map X509Certificate to CertificateResponse", e);
+        }
+        return response;
+    }
+
+    private String getRDN(X500Name name, ASN1ObjectIdentifier oid) {
+        RDN[] rdns = name.getRDNs(oid);
+        if (rdns.length > 0) {
+            return IETFUtils.valueToString(rdns[0].getFirst().getValue());
+        }
+        return null;
     }
 
     public Certificate toEntity(CreateCertificateRequest request) {

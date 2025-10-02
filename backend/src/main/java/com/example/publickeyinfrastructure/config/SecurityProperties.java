@@ -23,6 +23,5 @@ public class SecurityProperties {
     @Getter
     public static class Encryption {
         private String passphrase;
-
     }
 }

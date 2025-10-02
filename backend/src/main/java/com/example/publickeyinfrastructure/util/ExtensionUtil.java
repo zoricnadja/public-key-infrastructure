@@ -1,9 +1,13 @@
 package com.example.publickeyinfrastructure.util;
 
+import com.example.publickeyinfrastructure.model.CertificateExtension;
+import com.example.publickeyinfrastructure.model.ExtensionType;
+import org.bouncycastle.asn1.ASN1Primitive;
 import org.bouncycastle.asn1.x509.*;
 import org.bouncycastle.asn1.ASN1Encodable;
 import org.bouncycastle.asn1.ASN1ObjectIdentifier;
 import org.bouncycastle.cert.X509v3CertificateBuilder;
+import org.bouncycastle.cert.jcajce.JcaX509CertificateHolder;
 import org.bouncycastle.cert.jcajce.JcaX509ExtensionUtils;
 
 import java.security.PublicKey;
@@ -30,7 +34,7 @@ public class ExtensionUtil {
         }
     }
 
-    private ASN1Encodable buildExtensionValue(String oid, String value) throws Exception {
+    private ASN1Encodable buildExtensionValue(String oid, String value) {
         // --- Basic Constraints ---
         if (oid.equals(Extension.basicConstraints.getId())) {
             // frontend: "CA=true,pathLen=0" or "CA=false"
@@ -124,5 +128,30 @@ public class ExtensionUtil {
         }
 
         return null;
+    }
+
+    public List<CertificateExtension> extractExtensions(JcaX509CertificateHolder certHolder) {
+        List<CertificateExtension> extensionList = new ArrayList<>();
+        try {
+            Extensions extensions = certHolder.getExtensions();
+            if (extensions == null) return extensionList;
+
+            for (ASN1ObjectIdentifier oid : extensions.getExtensionOIDs()) {
+                Extension ext = extensions.getExtension(oid);
+                extensionList.add(new CertificateExtension(null, ext.isCritical(), ext.getExtnValue().toString(), ExtensionType.fromOid(String.valueOf(ext.getExtnId()))));
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to extract extensions", e);
+        }
+        return extensionList;
+    }
+
+    private String decodeExtensionValue(Extension extension) {
+        try {
+            ASN1Primitive derObject = ASN1Primitive.fromByteArray(extension.getExtnValue().getOctets());
+            return derObject.toString();
+        } catch (Exception e) {
+            return "Failed to decode extension";
+        }
     }
 }

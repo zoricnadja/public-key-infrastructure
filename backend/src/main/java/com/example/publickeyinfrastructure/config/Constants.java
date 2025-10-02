@@ -12,5 +12,5 @@ public class Constants {
     public static final String RANDOM_PROVIDER = "SUN";
     public static final String PROVIDER = "BC";
     public static final int KEY_SIZE = 2048;
-    public static final char[] ENTRY_PASSWORD = "changeit".toCharArray();
+    public static final String MASTER_KEY_ALIAS = "master-key";
 }

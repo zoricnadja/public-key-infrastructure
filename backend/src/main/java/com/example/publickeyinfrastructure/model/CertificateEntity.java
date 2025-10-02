@@ -117,6 +117,9 @@ public class CertificateEntity {
         builder.addRDN(BCStyle.C, country);
         builder.addRDN(BCStyle.E, email);
         builder.addRDN(BCStyle.UID, String.valueOf(id));
+        builder.addRDN(BCStyle.ST, state);
+        builder.addRDN(BCStyle.L, locality);
+
         return builder.build();
     }
 

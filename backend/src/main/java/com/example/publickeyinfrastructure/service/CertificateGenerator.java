@@ -7,7 +7,6 @@ import com.example.publickeyinfrastructure.model.CertificateType;
 import com.example.publickeyinfrastructure.model.CertificateEntity;
 import com.example.publickeyinfrastructure.model.ExtensionType;
 import com.example.publickeyinfrastructure.util.DateUtil;
-import org.bouncycastle.asn1.x509.BasicConstraints;
 import org.bouncycastle.asn1.x509.ExtendedKeyUsage;
 import org.bouncycastle.asn1.x509.Extension;
 import org.bouncycastle.asn1.x509.GeneralName;
@@ -19,7 +18,6 @@ import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.security.*;
 import java.security.cert.X509Certificate;
 

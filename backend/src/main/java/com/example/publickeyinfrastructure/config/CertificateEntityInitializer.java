@@ -5,11 +5,9 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class CertificateEntityInitializer {
-
     public CertificateEntityInitializer(SecurityProperties props) {
         CertificateEntity.setEncryptionPassphrase(
                 props.getEncryption().getPassphrase()
         );
     }
 }
-
