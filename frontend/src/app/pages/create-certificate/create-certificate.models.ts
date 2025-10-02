@@ -1,4 +1,4 @@
-export interface SubjectPayload {
+export interface Subject {
   commonName: string;
   organization: string;
   organizationUnit?: string;
@@ -8,17 +8,18 @@ export interface SubjectPayload {
   email?: string;
 }
 
-export interface ExtensionPayload {
+export interface Extension {
   oid: string;
   name?: string;
   isCritical?: boolean;
   value?: string;
 }
 
-export interface CreateCertificateRequestPayload {
+export interface CreateCertificateRequest {
   issuerSerialNumber?: string;
-  subject: SubjectPayload;
-  extensions?: ExtensionPayload[];
+  issuerCertificateType?: string;
+  subject: Subject;
+  extensions?: Extension[];
   issued?: string;
   expires: string;
   type: string;
