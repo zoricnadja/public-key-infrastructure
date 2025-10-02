@@ -8,6 +8,7 @@ import com.example.publickeyinfrastructure.model.CertificateEntity;
 import com.example.publickeyinfrastructure.model.Role;
 import com.example.publickeyinfrastructure.repository.CertificateEntityRepository;
 import com.example.publickeyinfrastructure.repository.CertificateRepository;
+import com.example.publickeyinfrastructure.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.bouncycastle.asn1.x500.X500Name;
 import org.slf4j.Logger;
@@ -34,16 +35,14 @@ public class CertificateService {
     @Value("${keystore.path}")
     private String keystorePath;
     private final CertificateRepository certificateRepository;
-    private final CertificateEntityRepository certificateEntityRepository;
 
     private static final Logger logger = LoggerFactory.getLogger(CertificateService.class);
 
     private final ProjectKeyStore projectKeyStore;
 
     @Autowired
-    public CertificateService(CertificateRepository certificateRepository, CertificateEntityRepository certificateEntityRepository, ProjectKeyStore projectKeyStore) {
+    public CertificateService(CertificateRepository certificateRepository, ProjectKeyStore projectKeyStore) {
         this.certificateRepository = certificateRepository;
-        this.certificateEntityRepository = certificateEntityRepository;
         this.projectKeyStore = projectKeyStore;
     }
 
