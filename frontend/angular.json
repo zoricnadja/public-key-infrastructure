@@ -74,7 +74,8 @@
               "buildTarget": "public-key-infrastructure:build:production"
             },
             "development": {
-              "buildTarget": "public-key-infrastructure:build:development"
+              "buildTarget": "public-key-infrastructure:build:development",
+              "ssl": true
             }
           },
           "defaultConfiguration": "development"
