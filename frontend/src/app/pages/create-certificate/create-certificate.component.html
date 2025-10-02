@@ -55,8 +55,8 @@
     <div class="mb-3">
       <label for="type" class="form-label">Certificate Type</label>
       <select id="type" class="form-select" formControlName="type">
-        <option value="ROOT">ROOT</option>
-        <option value="INTERMEDIATE">INTERMEDIATE</option>
+        <option *ngIf="isAdmin" value="ROOT">ROOT</option>
+        <option *ngIf="isAdmin || isCA" value="INTERMEDIATE">INTERMEDIATE</option>
         <option value="END_ENTITY">END ENTITY</option>
       </select>
       <div *ngIf="form.get('type')?.invalid && (form.get('type')?.touched || form.get('type')?.dirty)" class="text-danger">

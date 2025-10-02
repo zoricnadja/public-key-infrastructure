@@ -15,6 +15,7 @@ export class CertificateCreateComponent implements OnInit {
   caCertificates: Certificate[] = [];
   saving = false;
   isAdmin = false;
+  isCA = false;
   result: any = null;
   error: string | null = null;
   format = 'yyyy-MM-dd';
@@ -63,6 +64,10 @@ export class CertificateCreateComponent implements OnInit {
   ngOnInit(): void {
     this.loadIssuers();
     this.isAdmin = this.authService.getUserRoles().includes('admin');
+    this.isCA = this.authService.getUserRoles().includes('ca-user');
+    console.log(this.isAdmin);
+    console.log(this.authService.getUserRoles());
+    console.log(this.isCA);
   }
 
   get extensions(): FormArray {
