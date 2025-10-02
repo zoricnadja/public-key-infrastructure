@@ -77,7 +77,9 @@ public class CertificateController {
                 .orElseThrow(() -> new EntityNotFoundException(
                         "User not found with email: " + email));
 
-        List<X509Certificate> certificates = certificateService.findAllByUser(user);
+        List<X509Certificate> certificates = certificateService.findAllByUser(user).stream()
+                .filter(cert -> !certificateService.isRevoked(cert))
+                .toList();
         return ResponseEntity.ok(certificates.stream().map(certificateMapper::toDto).toList());
     }
 
@@ -87,7 +89,9 @@ public class CertificateController {
         List<X509Certificate> certificates = null;
         try {
             List<String> serialNumbers = this.userService.findAllAssigned();
-            certificates = certificateService.findAllUnassignedCACertificates(serialNumbers);
+            certificates = certificateService.findAllUnassignedCACertificates(serialNumbers).stream()
+                .filter(cert -> !certificateService.isRevoked(cert))
+                .toList();
         } catch (KeyStoreException e) {
             throw new RuntimeException(e);
         }
@@ -111,7 +115,7 @@ public class CertificateController {
     }
 
     @PostMapping("/revoke")
-    @PreAuthorize("hasRole('ROLE_ADMIN')")
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_CA_USER', 'ROLE_USER')")
     public ResponseEntity<String> revokeCertificate(@RequestBody RevocationRequest request) {
         try {
             this.revocationService.revokeCertificate(request.getSerialNumber(), request.getReason());
@@ -123,17 +127,6 @@ public class CertificateController {
         } catch (Exception e) {
             logger.error("Error revoking certificate: ", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An error occurred while revoking the certificate.");
-        }
-    }
-
-    @GetMapping("/is-revoked")
-    @PreAuthorize("hasAnyRole('ROLE_USER', 'ROLE_ADMIN', 'ROLE_CA_USER')")
-    public ResponseEntity<String> isCertificateRevoked(@RequestParam String serialNumber) {
-        boolean isRevoked = this.revocationService.isCertificateRevoked(serialNumber);
-        if (isRevoked) {
-            return ResponseEntity.ok("Certificate with serial number " + serialNumber + " is revoked.");
-        } else {
-            return ResponseEntity.ok("Certificate with serial number " + serialNumber + " is not revoked.");
         }
     }
 }
