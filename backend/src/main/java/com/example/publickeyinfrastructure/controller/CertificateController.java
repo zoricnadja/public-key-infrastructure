@@ -2,18 +2,24 @@ package com.example.publickeyinfrastructure.controller;
 
 import com.example.publickeyinfrastructure.dto.CertificateResponse;
 import com.example.publickeyinfrastructure.dto.CreateCertificateRequest;
+import com.example.publickeyinfrastructure.dto.RevocationRequest;
+import com.example.publickeyinfrastructure.keystore.ProjectKeyStore;
 import com.example.publickeyinfrastructure.mapper.CertificateMapper;
 import com.example.publickeyinfrastructure.model.Certificate;
 import com.example.publickeyinfrastructure.model.CertificateType;
 import com.example.publickeyinfrastructure.model.Role;
 import com.example.publickeyinfrastructure.model.User;
+import com.example.publickeyinfrastructure.service.CertificateExportService;
 import com.example.publickeyinfrastructure.service.CertificateService;
+import com.example.publickeyinfrastructure.service.RevocationService;
 import com.example.publickeyinfrastructure.service.UserService;
 import jakarta.persistence.EntityNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -33,13 +39,23 @@ public class CertificateController {
     private final CertificateService certificateService;
     private final CertificateMapper certificateMapper;
     private final UserService userService;
+    private final RevocationService revocationService;
+    private final CertificateExportService certificateExportService;
 
     @Autowired
-    public CertificateController(CertificateService certificateService, CertificateMapper certificateMapper, UserService userService) {
+    public CertificateController(
+            CertificateService certificateService,
+            CertificateMapper certificateMapper,
+            UserService userService,
+            RevocationService revocationService,
+            CertificateExportService certificateExportService
+    ) {
         this.certificateService = certificateService;
         this.certificateMapper = certificateMapper;
         this.userService = userService;
-    }
+        this.revocationService = revocationService;
+        this.certificateExportService = certificateExportService;
+
 
     @GetMapping("/issuers")
     @PreAuthorize("hasAnyRole('ROLE_USER', 'ROLE_ADMIN', 'ROLE_CA_USER')")
@@ -68,8 +84,30 @@ public class CertificateController {
                 .orElseThrow(() -> new EntityNotFoundException(
                         "User not found with email: " + email));
 
-        List<X509Certificate> certificates = certificateService.findAllByUser(user);
+        List<X509Certificate> certificates = certificateService.findAllByUser(user).stream()
+                .filter(cert -> !certificateService.isRevoked(cert))
+                .toList();
         return ResponseEntity.ok(certificates.stream().map(certificateMapper::toDto).toList());
+    }
+
+    @GetMapping("/download/{serialNumber}")
+    public ResponseEntity<byte[]> exportKeystore(
+            @PathVariable String serialNumber) {
+        try {
+            byte[] result =
+                    certificateExportService.createKeystoreWithKey(serialNumber);
+
+            String filename = serialNumber + ".jks";
+
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                    .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                    .body(result);
+
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(("Export error: " + e.getMessage()).getBytes());
+        }
     }
 
     @GetMapping("/unassigned")
@@ -78,7 +116,9 @@ public class CertificateController {
         List<X509Certificate> certificates = null;
         try {
             List<String> serialNumbers = this.userService.findAllAssigned();
-            certificates = certificateService.findAllUnassignedCACertificates(serialNumbers);
+            certificates = certificateService.findAllUnassignedCACertificates(serialNumbers).stream()
+                .filter(cert -> !certificateService.isRevoked(cert))
+                .toList();
         } catch (KeyStoreException e) {
             throw new RuntimeException(e);
         }
@@ -99,5 +139,21 @@ public class CertificateController {
             userService.save(user);
         }
         return ResponseEntity.status(HttpStatus.CREATED).body(certificateMapper.toDto(certificate));
+    }
+
+    @PostMapping("/revoke")
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_CA_USER', 'ROLE_USER')")
+    public ResponseEntity<String> revokeCertificate(@RequestBody RevocationRequest request) {
+        try {
+            this.revocationService.revokeCertificate(request.getSerialNumber(), request.getReason());
+            return ResponseEntity.ok("Certificate with serial number " + request.getSerialNumber() + " has been revoked.");
+        } catch (EntityNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        } catch (SecurityException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
+        } catch (Exception e) {
+            logger.error("Error revoking certificate: ", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An error occurred while revoking the certificate.");
+        }
     }
 }

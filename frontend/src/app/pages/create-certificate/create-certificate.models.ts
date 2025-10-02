@@ -23,10 +23,11 @@ export interface CreateCertificateRequest {
   issued?: string;
   expires: string;
   type: string;
+  csrPem: string;
 }
 
 export interface Certificate {
-  serialNumber?: string;
+  serialNumber: string;
   type?: string;
   issued?: Date;
   expires?: Date;

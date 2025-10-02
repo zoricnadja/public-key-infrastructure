@@ -20,8 +20,13 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.bouncycastle.asn1.ASN1ObjectIdentifier;
 import org.bouncycastle.asn1.x500.X500Name;
+import org.bouncycastle.asn1.x509.CRLDistPoint;
+import org.bouncycastle.asn1.x509.DistributionPoint;
+import org.bouncycastle.asn1.x509.DistributionPointName;
+import org.bouncycastle.asn1.x509.Extension;
+import org.bouncycastle.asn1.x509.GeneralName;
+import org.bouncycastle.asn1.x509.GeneralNames;
 import org.bouncycastle.cert.X509CertificateHolder;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
 import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder;
@@ -31,6 +36,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.math.BigInteger;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.security.PrivateKey;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
@@ -109,6 +116,7 @@ public class Certificate {
 
     public X509Certificate toX509Certificate(PrivateKey issuerPrivateKey) throws Exception {
         X500Name subjectName = subject.getX500Name();
+        logger.debug("Subject Name: " + subjectName.toString());
         X500Name issuerName = issuer.getX500Name();
 
         JcaX509v3CertificateBuilder certBuilder = new JcaX509v3CertificateBuilder(
@@ -129,6 +137,19 @@ public class Certificate {
         ContentSigner signer = new JcaContentSignerBuilder(Constants.SIGNATURE_ALGORITHM)
                 .setProvider(Constants.PROVIDER)
                 .build(issuerPrivateKey);
+
+        String crlUrl = "http://localhost:8080/crl?issuerDn=" + URLEncoder.encode(subjectName.toString(), StandardCharsets.UTF_8);
+        DistributionPointName distPointName = new DistributionPointName(
+                new GeneralNames(new GeneralName(GeneralName.uniformResourceIdentifier, crlUrl))
+        );
+        DistributionPoint[] distPoints = new DistributionPoint[] {
+                new DistributionPoint(distPointName, null, null)
+        };
+        certBuilder.addExtension(
+                Extension.cRLDistributionPoints,
+                false,
+                new CRLDistPoint(distPoints)
+        );
 
         X509CertificateHolder holder = certBuilder.build(signer);
 

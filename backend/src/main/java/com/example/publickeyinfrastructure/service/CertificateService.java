@@ -8,6 +8,7 @@ import com.example.publickeyinfrastructure.model.CertificateEntity;
 import com.example.publickeyinfrastructure.model.Role;
 import com.example.publickeyinfrastructure.model.User;
 import com.example.publickeyinfrastructure.repository.CertificateRepository;
+import com.example.publickeyinfrastructure.repository.RevokedCertificateRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,15 +35,17 @@ public class CertificateService {
     @Value("${keystore.path}")
     private String keystorePath;
     private final CertificateRepository certificateRepository;
+    private final RevokedCertificateRepository revokedCertificateRepository;
 
     private static final Logger logger = LoggerFactory.getLogger(CertificateService.class);
 
     private final ProjectKeyStore projectKeyStore;
 
     @Autowired
-    public CertificateService(CertificateRepository certificateRepository, ProjectKeyStore projectKeyStore) {
+    public CertificateService(CertificateRepository certificateRepository, ProjectKeyStore projectKeyStore, RevokedCertificateRepository revokedCertificateRepository) {
         this.certificateRepository = certificateRepository;
         this.projectKeyStore = projectKeyStore;
+        this.revokedCertificateRepository = revokedCertificateRepository;
     }
 
     public KeyPair generateKeyPair() {
@@ -68,7 +71,7 @@ public class CertificateService {
         return projectKeyStore.readCertificateBySerialNumber(serialNumber);
     }
 
-    public List<X509Certificate> findAllByUser(User user) {
+    public List<ProjectKeyStore.CertWithType> findAllByUser(User user) {
         projectKeyStore.loadOrCreate(keystorePath);
         return projectKeyStore.findAllByUser(user);
     }
@@ -83,6 +86,10 @@ public class CertificateService {
         return projectKeyStore.findUnassignedCACertificates(serialNumbers);
     }
 
+    public boolean isRevoked(X509Certificate certificate) {
+        return revokedCertificateRepository.existsBySerialNumber(certificate.getSerialNumber().toString());
+    }
+
     private void checkChain(X509Certificate certificate) throws Exception {
         X509Certificate currentCert = certificate;
 
@@ -92,6 +99,10 @@ public class CertificateService {
             if (isSelfSigned(currentCert)) {
                 currentCert.verify(currentCert.getPublicKey());
                 break;
+            }
+
+            if (revokedCertificateRepository.existsBySerialNumber(currentCert.getSerialNumber().toString())) {
+                throw new SecurityException("Certificate with serial number " + currentCert.getSerialNumber() + " is revoked.");
             }
 
             X509Certificate finalCurrentCert = currentCert;
@@ -125,8 +136,6 @@ public class CertificateService {
     }
 
     public Certificate createCertificate(Certificate request, Role subjectRole, String issuerSerialNumber, CertificateType issuerCertificateType) throws Exception {
-        CertificateEntity subject = request.getSubject();
-        request.setSubject(subject);
         request.setSignatureAlgorithm(Constants.SIGNATURE_ALGORITHM);
         BigInteger serial = new BigInteger(128, new SecureRandom());
         request.setSerialNumber(serial.toString(16).toUpperCase());
@@ -138,18 +147,22 @@ public class CertificateService {
                 createRootCertificateEntities(request);
                 xCertificate = CertificateGenerator.generateX509Certificate(request, request.getSubject().getPrivateKey(), request.getSubject().getPublicKey());
             }
-            else
+            else {
                 throw new IllegalArgumentException("You don't have permission to create Root CA Certificate");
+            }
         } else {
             X509Certificate issuerX509Certificate = projectKeyStore.readCertificateBySerialNumber(issuerSerialNumber).orElseThrow(() -> new EntityNotFoundException("Certificate not found"));
             Certificate issuerCertificate = projectKeyStore.convertX509ToCertificate(issuerX509Certificate);
             PrivateKey issuerPrivateKey = projectKeyStore.readPrivateKey(issuerCertificate.getSubject().getOrganization(), issuerCertificateType.name(), issuerSerialNumber).orElseThrow(() -> new EntityNotFoundException("Private key not found"));
-            if(!request.isDateValid() || request.getExpires().after(issuerCertificate.getExpires()))
+            if(!request.isDateValid() || request.getExpires().after(issuerCertificate.getExpires())) {
                 throw new IllegalArgumentException("Subject's expiration date cannot be after issuer's expiration date");
+            }
             request.setIssuer(issuerCertificate.getSubject());
-            KeyPair subjectKeyPair = this.generateKeyPair();
-            request.getSubject().setPublicKey(subjectKeyPair.getPublic());
-            request.getSubject().setPrivateKey(subjectKeyPair.getPrivate());
+            if (request.getSubject().getPublicKey() == null) {
+                KeyPair subjectKeyPair = this.generateKeyPair();
+                request.getSubject().setPublicKey(subjectKeyPair.getPublic());
+                request.getSubject().setPrivateKey(subjectKeyPair.getPrivate());
+            }
             if (request.getType().equals(CertificateType.INTERMEDIATE) && subjectRole.equals(Role.USER))
                 throw new IllegalCallerException("You don't have permission for intermediate certificates");
             xCertificate = CertificateGenerator.generateX509Certificate(request, issuerPrivateKey, request.getIssuer().getPublicKey());
@@ -159,7 +172,22 @@ public class CertificateService {
         request.setSerialNumber(xCertificate.getSerialNumber().toString());
         //todo only save to keystore
         request = certificateRepository.save(request);
-        projectKeyStore.writeKeyEntry(request.getType().name(), String.format(request.getSerialNumber()), request.getSubject().getPrivateKey(), xCertificate, request.getSubject().getOrganization());
+        if (request.getSubject().getPrivateKey() != null) {
+            projectKeyStore.writeKeyEntry(
+                    request.getType().name(),
+                    request.getSerialNumber(),
+                    request.getSubject().getPrivateKey(),
+                    xCertificate,
+                    request.getSubject().getOrganization()
+            );
+        } else {
+            projectKeyStore.writeCertificateEntry(
+                    request.getType().name(),
+                    request.getSerialNumber(),
+                    xCertificate,
+                    request.getSubject().getOrganization()
+            );
+        }
         projectKeyStore.save(keystorePath);
         return request;
     }

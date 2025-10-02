@@ -21,6 +21,8 @@ public class CreateCertificateRequest {
     private Date issued;
     private Date expires;
     private CertificateType type;
+    private String csrPem;
+
 
     @Override
     public String toString() {
