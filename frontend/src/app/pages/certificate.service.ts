@@ -13,4 +13,8 @@ export class CertificateService {
   getAllUnassigned(): Observable<Certificate[]> {
     return this.http.get<Certificate[]>(environment.apiUrl + '/certificates/unassigned');
   }
+
+  revokeCertificate(serialNumber: string, reason: number): Observable<void> {
+    return this.http.post<void>(environment.apiUrl + '/certificates/revoke', { serialNumber, reason });
+  }
 }
