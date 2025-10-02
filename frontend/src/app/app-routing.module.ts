@@ -4,6 +4,7 @@ import { HomeComponent } from './pages/home/home.component';
 import { CertificatesComponent } from './pages/certificates/certificates.component';
 import { CertificateCreateComponent } from './pages/create-certificate/create-certificate.component';
 import { AuthGuard } from './auth/auth.guard';
+import { AdminCaAssignComponent } from './pages/admin-ca-assign/admin-ca-assign.component';
 
 const routes: Routes = [
   {
@@ -19,6 +20,11 @@ const routes: Routes = [
   {
     path: 'create-certificate',
     component: CertificateCreateComponent,
+    canActivate: [AuthGuard],
+  },
+  {
+    path: 'admin-ca-assign',
+    component: AdminCaAssignComponent,
     canActivate: [AuthGuard],
   },
 ];

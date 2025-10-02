@@ -17,4 +17,8 @@ export class HomeComponent {
   goToCreateCertificate(): void {
     this.router.navigate(['/create-certificate']);
   }
+
+  goToAdminCaAssign(): void {
+    this.router.navigate(['/admin-ca-assign']);
+  }
 }
