@@ -3,6 +3,22 @@
 
   <form [formGroup]="form" (ngSubmit)="submit()">
 
+    <!-- Mode selection -->
+    <div class="mb-3">
+      <label class="form-label">Certificate creation mode</label>
+      <select class="form-select" formControlName="creationMode">
+        <option value="auto">Auto-generate</option>
+        <option value="csr">CSR Upload</option>
+      </select>
+    </div>
+
+    <!-- CSR Upload -->
+    <div class="mb-3" *ngIf="form.value.creationMode === 'csr'">
+      <label class="form-label">Upload CSR (PEM)</label>
+      <input type="file" class="form-control" (change)="onCsrFileChange($event)">
+      <div *ngIf="csrError && form.value.creationMode === 'csr'" class="text-danger">{{ csrError }}</div>
+    </div>
+
     <!-- Issuer selection -->
     <div class="mb-3">
       <label class="form-label">Issuer CA</label>
@@ -52,33 +68,33 @@
     </div>
 
     <!-- Certificate type -->
-    <div class="mb-3">
+    <div class="mb-3" *ngIf="form.value.creationMode === 'auto'">
       <label for="type" class="form-label">Certificate Type</label>
       <select id="type" class="form-select" formControlName="type">
         <option *ngIf="isAdmin" value="ROOT">ROOT</option>
         <option *ngIf="isAdmin || isCA" value="INTERMEDIATE">INTERMEDIATE</option>
         <option value="END_ENTITY">END ENTITY</option>
       </select>
-      <div *ngIf="form.get('type')?.invalid && (form.get('type')?.touched || form.get('type')?.dirty)" class="text-danger">
+      <div *ngIf="form.get('type')?.invalid && (form.get('type')?.touched || form.get('type')?.dirty) && form.value.creationMode === 'auto'" class="text-danger">
         Certificate type is required.
       </div>
     </div>
 
-    <!-- Subject -->
-    <h5>Subject (owner)</h5>
-    <div formGroupName="subject">
+    <!-- Subject fields -->
+    <div formGroupName="subject" *ngIf="form.value.creationMode === 'auto'">
+      <h5>Subject (owner)</h5>
       <div class="row mb-2">
         <div class="col">
           <label>Common Name (CN)</label>
           <input class="form-control" formControlName="commonName">
-          <div *ngIf="form.get('subject.commonName')?.invalid && (form.get('subject.commonName')?.touched || form.get('subject.commonName')?.dirty)" class="text-danger">
+          <div *ngIf="form.get('subject.commonName')?.invalid && (form.get('subject.commonName')?.touched || form.get('subject.commonName')?.dirty) && form.value.creationMode === 'auto'" class="text-danger">
             Common Name is required.
           </div>
         </div>
         <div class="col">
           <label>Organization (O)</label>
           <input class="form-control" formControlName="organization">
-          <div *ngIf="form.get('subject.organization')?.invalid && (form.get('subject.organization')?.touched || form.get('subject.organization')?.dirty)" class="text-danger">
+          <div *ngIf="form.get('subject.organization')?.invalid && (form.get('subject.organization')?.touched || form.get('subject.organization')?.dirty) && form.value.creationMode === 'auto'" class="text-danger">
             Organization is required.
           </div>
         </div>
@@ -88,14 +104,14 @@
         <div class="col">
           <label>Organizational Unit (OU)</label>
           <input class="form-control" formControlName="organizationalUnit">
-          <div *ngIf="form.get('subject.organizationalUnit')?.invalid && (form.get('subject.organizationalUnit')?.touched || form.get('subject.organizationalUnit')?.dirty)" class="text-danger">
+          <div *ngIf="form.get('subject.organizationalUnit')?.invalid && (form.get('subject.organizationalUnit')?.touched || form.get('subject.organizationalUnit')?.dirty) && form.value.creationMode === 'auto'" class="text-danger">
             Organizational Unit is required.
           </div>
         </div>
         <div class="col">
           <label>Country (C)</label>
           <input class="form-control" formControlName="country" maxlength="2">
-          <div *ngIf="form.get('subject.country')?.invalid && (form.get('subject.country')?.touched || form.get('subject.country')?.dirty)" class="text-danger">
+          <div *ngIf="form.get('subject.country')?.invalid && (form.get('subject.country')?.touched || form.get('subject.country')?.dirty) && form.value.creationMode === 'auto'" class="text-danger">
             Country is required and must be 2 letters.
           </div>
         </div>
@@ -105,14 +121,14 @@
         <div class="col">
           <label>State (ST)</label>
           <input class="form-control" formControlName="state">
-          <div *ngIf="form.get('subject.state')?.invalid && (form.get('subject.state')?.touched || form.get('subject.state')?.dirty)" class="text-danger">
+          <div *ngIf="form.get('subject.state')?.invalid && (form.get('subject.state')?.touched || form.get('subject.state')?.dirty) && form.value.creationMode === 'auto'" class="text-danger">
             State is required.
           </div>
         </div>
         <div class="col">
           <label>Locality (L)</label>
           <input class="form-control" formControlName="locality">
-          <div *ngIf="form.get('subject.locality')?.invalid && (form.get('subject.locality')?.touched || form.get('subject.locality')?.dirty)" class="text-danger">
+          <div *ngIf="form.get('subject.locality')?.invalid && (form.get('subject.locality')?.touched || form.get('subject.locality')?.dirty) && form.value.creationMode === 'auto'" class="text-danger">
             Locality is required.
           </div>
         </div>
@@ -121,7 +137,7 @@
       <div class="mb-3">
         <label>Email</label>
         <input class="form-control" formControlName="email">
-        <div *ngIf="form.get('subject.email')?.invalid && (form.get('subject.email')?.touched || form.get('subject.email')?.dirty)" class="text-danger">
+        <div *ngIf="form.get('subject.email')?.invalid && (form.get('subject.email')?.touched || form.get('subject.email')?.dirty) && form.value.creationMode === 'auto'" class="text-danger">
           <span *ngIf="form.get('subject.email')?.errors?.['required']">Email is required.</span>
           <span *ngIf="form.get('subject.email')?.errors?.['email']">Invalid email format.</span>
         </div>
@@ -129,27 +145,24 @@
     </div>
 
     <!-- Validity -->
-    <h5>Validity</h5>
     <div class="row mb-3">
       <div class="col">
         <label>Issued</label>
         <input type="date" class="form-control" formControlName="issued">
-        <div *ngIf="form.get('issued')?.invalid && (form.get('issued')?.touched || form.get('issued')?.dirty)" class="text-danger">
-          Issued date is required and must be in the future.
-        </div>
       </div>
       <div class="col">
         <label>Expires</label>
         <input type="date" class="form-control" formControlName="expires">
-        <div *ngIf="form.get('expires')?.invalid && (form.get('expires')?.touched || form.get('expires')?.dirty)" class="text-danger">
-          Expiration date is required and must be in the future.
+        <div *ngIf="form.get('expires')?.errors && (form.get('expires')?.touched || form.get('expires')?.dirty) && form.value.creationMode === 'auto'" class="text-danger">
+          <span *ngIf="form.get('expires')?.errors?.['required']">Expiration date is required.</span>
+          <span *ngIf="form.get('expires')?.errors?.['notFutureDate']">Expiration must be in the future.</span>
         </div>
       </div>
     </div>
 
     <!-- Extensions -->
-    <h5>Extensions</h5>
-    <div class="mb-2">
+    <h5 *ngIf="form.value.creationMode === 'auto'">Extensions</h5>
+    <div class="mb-2" *ngIf="form.value.creationMode === 'auto'">
       <label>Add common extension:</label>
       <div class="btn-group ms-2">
         <button type="button" class="btn btn-outline-secondary"
@@ -159,7 +172,7 @@
       </div>
     </div>
 
-    <div formArrayName="extensions">
+    <div formArrayName="extensions" *ngIf="form.value.creationMode === 'auto'">
       <div *ngFor="let ext of extensions.controls; index as i" [formGroupName]="i" class="card mb-2 p-2">
         <div class="d-flex align-items-center">
           <div class="flex-grow-1">
