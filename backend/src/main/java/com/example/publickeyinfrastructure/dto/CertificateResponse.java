@@ -13,6 +13,7 @@ import java.util.Date;
 @Getter
 @Setter
 public class CertificateResponse {
+    //todo not return revoked
     private String serialNumber;
     private CertificateType type;
     private Date issued;

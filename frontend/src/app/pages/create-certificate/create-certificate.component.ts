@@ -1,11 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { FormArray, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { format } from 'date-fns';
-import {
-  ExtensionPayload,
-  CreateCertificateRequestPayload,
-  Certificate,
-} from './create-certificate.models';
+import { Extension, CreateCertificateRequest, Certificate } from './create-certificate.models';
 import { CertificateCreateService } from './create-certificate.service';
 import { AuthService } from '../../auth/auth.service';
 
@@ -19,14 +15,12 @@ export class CertificateCreateComponent implements OnInit {
   caCertificates: Certificate[] = [];
   saving = false;
   isAdmin = false;
+  isCA = false;
   result: any = null;
   error: string | null = null;
   format = 'yyyy-MM-dd';
 
-  // common extensions to choose from (friendly name + OID)
   commonExtensions = [
-    // TODO: remove this and handle on backend
-    // { name: 'BasicConstraints', oid: '2.5.29.19' },
     { name: 'KeyUsage', oid: '2.5.29.15' },
     { name: 'ExtendedKeyUsage', oid: '2.5.29.37' },
     { name: 'SubjectAltName', oid: '2.5.29.17' },
@@ -70,13 +64,17 @@ export class CertificateCreateComponent implements OnInit {
   ngOnInit(): void {
     this.loadIssuers();
     this.isAdmin = this.authService.getUserRoles().includes('admin');
+    this.isCA = this.authService.getUserRoles().includes('ca-user');
+    console.log(this.isAdmin);
+    console.log(this.authService.getUserRoles());
+    console.log(this.isCA);
   }
 
   get extensions(): FormArray {
     return this.form.get('extensions') as FormArray;
   }
 
-  addExtension(data?: Partial<ExtensionPayload>) {
+  addExtension(data?: Partial<Extension>) {
     const group = this.fb.group({
       oid: [data?.oid || '', Validators.required],
       name: [data?.name || ''],
@@ -89,15 +87,6 @@ export class CertificateCreateComponent implements OnInit {
   removeExtension(index: number) {
     this.extensions.removeAt(index);
   }
-
-  // addCommonExtension(ext: { name: string; oid: string; isCritical?: boolean; value?: string }) {
-  //   this.addExtension({
-  //     oid: ext.oid,
-  //     name: ext.name,
-  //     isCritical: ext.isCritical,
-  //     value: ext.value,
-  //   });
-  // }
 
   addCommonExtension(ext: { name: string; oid: string; isCritical?: boolean; value?: string }) {
     let defaultValue = '';
@@ -160,8 +149,9 @@ export class CertificateCreateComponent implements OnInit {
       this.error = 'Please select issuer';
       return;
     }
-    const payload: CreateCertificateRequestPayload = {
+    const payload: CreateCertificateRequest = {
       issuerSerialNumber: issuer?.serialNumber,
+      issuerCertificateType: issuer?.type,
       subject: this.form.value.subject,
       extensions: this.form.value.extensions,
       issued: this.form.value.issued
@@ -175,6 +165,7 @@ export class CertificateCreateComponent implements OnInit {
       next: (res) => {
         this.saving = false;
         this.result = res;
+        this.loadIssuers();
       },
       error: (err) => {
         this.saving = false;

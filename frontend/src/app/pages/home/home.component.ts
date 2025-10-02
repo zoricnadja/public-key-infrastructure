@@ -1,15 +1,24 @@
 import { Component } from '@angular/core';
 import { AuthService } from '../../auth/auth.service';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-home',
   templateUrl: './home.component.html',
-  styleUrl: './home.component.scss',
+  styleUrls: ['./home.component.scss'],
 })
 export class HomeComponent {
-  constructor(private authService: AuthService) {}
+  constructor(private authService: AuthService, private router: Router) {}
 
   logout(): void {
     this.authService.logout();
+  }
+
+  goToCreateCertificate(): void {
+    this.router.navigate(['/create-certificate']);
+  }
+
+  goToAdminCaAssign(): void {
+    this.router.navigate(['/admin-ca-assign']);
   }
 }

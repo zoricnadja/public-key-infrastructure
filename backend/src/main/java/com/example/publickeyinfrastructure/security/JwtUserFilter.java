@@ -59,6 +59,7 @@ public class JwtUserFilter extends OncePerRequestFilter {
                 String firstName = jwt.getClaim("given_name");
                 String lastName = jwt.getClaim("family_name");
                 String organization = jwt.getClaim("organization");
+                logger.debug(jwt.getClaims().toString());
                 this.userService.save(new User(null, keycloakId, email, firstName, lastName, organization, role));
             }
         }

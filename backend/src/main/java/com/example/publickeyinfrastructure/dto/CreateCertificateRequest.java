@@ -15,6 +15,7 @@ import java.util.List;
 @Getter
 public class CreateCertificateRequest {
     private String issuerSerialNumber;
+    private CertificateType issuerCertificateType;
     private X500NameDTO subject;
     private List<ExtensionDTO> extensions;
     private Date issued;
@@ -29,7 +30,8 @@ public class CreateCertificateRequest {
                 ", extensions=" + extensions +
                 ", issued=" + issued +
                 ", expires=" + expires +
-                ", type='" + type + '\'' +
+                ", type='" + type  +
+                ", issuerType='" + issuerCertificateType + '\'' +
                 '}';
     }
 }
