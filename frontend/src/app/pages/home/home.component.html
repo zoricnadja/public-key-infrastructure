@@ -1,2 +1,7 @@
 <button (click)="logout()">Logout</button>
-<app-certificate-create></app-certificate-create>
+
+<div class="d-flex justify-content-between align-items-center mt-4 mb-2">
+	<h3>Certificates</h3>
+	<button class="btn btn-primary" (click)="goToCreateCertificate()">Add New</button>
+</div>
+<app-certificates></app-certificates>

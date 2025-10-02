@@ -17,4 +17,8 @@ export class CertificateCreateService {
   getIssuers(): Observable<Certificate[]> {
     return this.http.get<Certificate[]>(environment.apiUrl + '/certificates/issuers');
   }
+  
+  getCertificates(): Observable<Certificate[]> {
+    return this.http.get<Certificate[]>(environment.apiUrl + '/certificates');
+  }
 }
