@@ -19,6 +19,7 @@ export class CertificateCreateComponent implements OnInit {
   result: any = null;
   error: string | null = null;
   format = 'yyyy-MM-dd';
+  csrError: string | null = null;
 
   commonExtensions = [
     { name: 'KeyUsage', oid: '2.5.29.15' },
@@ -44,6 +45,7 @@ export class CertificateCreateComponent implements OnInit {
     };
 
     this.form = this.fb.group({
+      creationMode: ['auto', null],
       issuerCertificateAlias: ['', null],
       subject: this.fb.group({
         commonName: ['', Validators.required],
@@ -61,6 +63,19 @@ export class CertificateCreateComponent implements OnInit {
     });
   }
 
+  onCsrFileChange(event: any) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      this.form.addControl('csrPem', this.fb.control(reader.result as string));
+    };
+    reader.onerror = () => {
+      this.csrError = 'Failed to read CSR file';
+    };
+    reader.readAsText(file);
+  }
   ngOnInit(): void {
     this.loadIssuers();
     this.isAdmin = this.authService.getUserRoles().includes('admin');
@@ -139,7 +154,7 @@ export class CertificateCreateComponent implements OnInit {
   submit() {
     this.form.markAllAsTouched();
 
-    if (this.form.invalid) {
+    if (this.form.invalid && this.form.get('creationMode')?.value === 'auto') {
       this.error = 'Please fix the errors before generating the certificate.';
       return;
     }
@@ -159,8 +174,9 @@ export class CertificateCreateComponent implements OnInit {
         : format(new Date(), this.format),
       expires: format(new Date(this.form.value.expires), this.format),
       type: this.form.value.type,
+      csrPem: this.form.value.csrPem,
     };
-
+    console.log(payload);
     this.service.createCertificate(payload).subscribe({
       next: (res) => {
         this.saving = false;
