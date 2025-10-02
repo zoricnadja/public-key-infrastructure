@@ -149,6 +149,29 @@ public class ProjectKeyStore {
         }
     }
 
+    public void writeCertificateEntry(String type, String serialNumber, X509Certificate certificate, String orgId) {
+        try {
+            if (type == null || serialNumber == null || type.isEmpty() || serialNumber.isEmpty()) {
+                throw new IllegalArgumentException("Type and serial number cannot be null or empty");
+            }
+            if (orgId == null || orgId.isEmpty()) {
+                throw new IllegalArgumentException("Organization ID cannot be null or empty");
+            }
+
+            String alias = type.toLowerCase() + "-" + serialNumber;
+
+            keyStore.setCertificateEntry(alias, certificate);
+
+            logger.debug("Certificate entry '{}' written successfully for organization '{}'", alias, orgId);
+
+            typeIndex.computeIfAbsent(type.toLowerCase(), k -> new ArrayList<>()).add(alias);
+
+        } catch (Exception e) {
+            logger.error("Failed to write certificate entry", e);
+            throw new RuntimeException("Failed to write certificate entry", e);
+        }
+    }
+
     public Optional<X509Certificate> readCertificateBySerialNumber(String serialNumber) {
         try {
             Enumeration<String> aliases = keyStore.aliases();
