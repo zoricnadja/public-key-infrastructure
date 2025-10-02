@@ -16,7 +16,6 @@
         <th>Issuer CN</th>
         <th>Issuer O</th>
         <th>Issuer OU</th>
-        <th>Actions</th>
       </tr>
     </thead>
     <tbody>
@@ -32,14 +31,19 @@
         <td>{{ cert.issuerCN }}</td>
         <td>{{ cert.issuerO }}</td>
         <td>{{ cert.issuerOU }}</td>
-        <td class="d-flex align-items-center gap-2">
-          <select class="form-select form-select-sm w-auto" [(ngModel)]="selectedReasons[cert.serialNumber]">
-            <option *ngFor="let reason of revocationReasons" [value]="reason.value">{{ reason.label }}</option>
-          </select>
-          <button class="btn btn-danger btn-sm" (click)="revokeCertificate(cert)">Revoke</button>
-        </td>
       </tr>
     </tbody>
   </table>
   <div *ngIf="!loading && !certificates.length" class="alert alert-warning">No certificates found.</div>
+  <div class="my-3 d-flex align-items-center gap-2" *ngIf="certificates.length">
+    <label for="certSelect" class="form-label mb-0">Certificate:</label>
+    <select id="certSelect" class="form-select form-select-sm w-auto" [(ngModel)]="selectedSerial">
+      <option *ngFor="let cert of certificates" [value]="cert.serialNumber">{{ cert.serialNumber }}</option>
+    </select>
+    <label for="reasonSelect" class="form-label mb-0">Reason:</label>
+    <select id="reasonSelect" class="form-select form-select-sm w-auto" [(ngModel)]="selectedReason">
+      <option *ngFor="let reason of revocationReasons" [value]="reason.value">{{ reason.label }}</option>
+    </select>
+    <button class="btn btn-danger btn-sm" (click)="revokeSelectedCertificate()" [disabled]="!selectedSerial">Revoke</button>
+  </div>
 </div>

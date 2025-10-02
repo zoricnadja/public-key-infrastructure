@@ -26,6 +26,8 @@ export class CertificatesComponent implements OnInit {
     { label: 'AA Compromise', value: 10 }
   ];
   selectedReasons: { [serial: string]: number } = {};
+  selectedSerial: string | null = null;
+  selectedReason: number = 0;
 
   constructor(
     private certificateCreateService: CertificateCreateService,
@@ -37,6 +39,7 @@ export class CertificatesComponent implements OnInit {
   }
 
   private fetchCertificates(): void {
+    this.loading = true;
     this.certificateCreateService.getCertificates().subscribe({
       next: (certs) => {
         this.certificates = certs;
@@ -49,11 +52,12 @@ export class CertificatesComponent implements OnInit {
     });
   }
 
-  revokeCertificate(cert: Certificate): void {
-    const reason = this.selectedReasons[cert.serialNumber] ?? 0;
-    this.loading = true;
-    this.certificateService.revokeCertificate(cert.serialNumber, reason).subscribe({
+  revokeSelectedCertificate(): void {
+    if (!this.selectedSerial) return;
+    this.certificateService.revokeCertificate(this.selectedSerial, this.selectedReason).subscribe({
       next: () => {
+        this.selectedSerial = null;
+        this.selectedReason = 0;
         this.fetchCertificates();
       },
       error: (err) => {
