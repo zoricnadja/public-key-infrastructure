@@ -1,14 +1,22 @@
 package com.example.publickeyinfrastructure.model;
 
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+
+@Getter
+@AllArgsConstructor
 public enum RevocationReason {
-    UNSPECIFIED,
-    KEY_COMPROMISE,
-    CA_COMPROMISE,
-    AFFILIATION_CHANGED,
-    SUPERSEDED,
-    CESSATION_OF_OPERATION,
-    CERTIFICATE_HOLD,
-    PRIVILEGE_WITHDRAWN,
-    AA_COMPROMISE,
-    WEAK_ALGORITHM_OR_KEY
+    UNSPECIFIED(0),
+    KEY_COMPROMISE(1),
+    CA_COMPROMISE(2),
+    AFFILIATION_CHANGED(3),
+    SUPERSEDED(4),
+    CESSATION_OF_OPERATION(5),
+    CERTIFICATE_HOLD(6),
+    REMOVE_FROM_CRL(8),
+    PRIVILEGE_WITHDRAWN(9),
+    AA_COMPROMISE(10),
+    WEAK_ALGORITHM_OR_KEY(11);
+
+    private final int code;
 }

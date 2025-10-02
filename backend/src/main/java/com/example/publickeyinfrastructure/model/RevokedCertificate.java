@@ -29,7 +29,7 @@ public class RevokedCertificate {
     private String serialNumber;
 
     @Column(nullable = false)
-    private String issuerName;
+    private String issuerDn;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
