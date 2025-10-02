@@ -31,6 +31,9 @@
         <td>{{ cert.issuerCN }}</td>
         <td>{{ cert.issuerO }}</td>
         <td>{{ cert.issuerOU }}</td>
+        <td>
+          <button class="btn btn-sm btn-success" (click)="cert.serialNumber && downloadKeystore(cert.serialNumber)">Download JKS</button>
+        </td>
       </tr>
     </tbody>
   </table>

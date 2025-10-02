@@ -3,11 +3,13 @@ package com.example.publickeyinfrastructure.controller;
 import com.example.publickeyinfrastructure.dto.CertificateResponse;
 import com.example.publickeyinfrastructure.dto.CreateCertificateRequest;
 import com.example.publickeyinfrastructure.dto.RevocationRequest;
+import com.example.publickeyinfrastructure.keystore.ProjectKeyStore;
 import com.example.publickeyinfrastructure.mapper.CertificateMapper;
 import com.example.publickeyinfrastructure.model.Certificate;
 import com.example.publickeyinfrastructure.model.CertificateType;
 import com.example.publickeyinfrastructure.model.Role;
 import com.example.publickeyinfrastructure.model.User;
+import com.example.publickeyinfrastructure.service.CertificateExportService;
 import com.example.publickeyinfrastructure.service.CertificateService;
 import com.example.publickeyinfrastructure.service.RevocationService;
 import com.example.publickeyinfrastructure.service.UserService;
@@ -15,7 +17,9 @@ import jakarta.persistence.EntityNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -36,19 +40,22 @@ public class CertificateController {
     private final CertificateMapper certificateMapper;
     private final UserService userService;
     private final RevocationService revocationService;
+    private final CertificateExportService certificateExportService;
 
     @Autowired
     public CertificateController(
             CertificateService certificateService,
             CertificateMapper certificateMapper,
             UserService userService,
-            RevocationService revocationService
+            RevocationService revocationService,
+            CertificateExportService certificateExportService
     ) {
         this.certificateService = certificateService;
         this.certificateMapper = certificateMapper;
         this.userService = userService;
         this.revocationService = revocationService;
-    }
+        this.certificateExportService = certificateExportService;
+
 
     @GetMapping("/issuers")
     @PreAuthorize("hasAnyRole('ROLE_USER', 'ROLE_ADMIN', 'ROLE_CA_USER')")
@@ -81,6 +88,26 @@ public class CertificateController {
                 .filter(cert -> !certificateService.isRevoked(cert))
                 .toList();
         return ResponseEntity.ok(certificates.stream().map(certificateMapper::toDto).toList());
+    }
+
+    @GetMapping("/download/{serialNumber}")
+    public ResponseEntity<byte[]> exportKeystore(
+            @PathVariable String serialNumber) {
+        try {
+            byte[] result =
+                    certificateExportService.createKeystoreWithKey(serialNumber);
+
+            String filename = serialNumber + ".jks";
+
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                    .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                    .body(result);
+
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(("Export error: " + e.getMessage()).getBytes());
+        }
     }
 
     @GetMapping("/unassigned")

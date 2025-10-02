@@ -6,7 +6,7 @@ import { CertificateService } from '../certificate.service';
 @Component({
   selector: 'app-certificates',
   templateUrl: './certificates.component.html',
-  styleUrls: ['./certificates.component.scss']
+  styleUrls: ['./certificates.component.scss'],
 })
 export class CertificatesComponent implements OnInit {
   certificates: Certificate[] = [];
@@ -48,7 +48,22 @@ export class CertificatesComponent implements OnInit {
       error: (err) => {
         this.error = err?.error?.message || err?.message || 'Server error';
         this.loading = false;
-      }
+      },
+    });
+  }
+
+
+  downloadKeystore(serialNumber: string) {
+    this.certificateService.downloadKeystore(serialNumber).subscribe((blob) => {
+      const filename = `${serialNumber}.jks`;
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
     });
   }
 

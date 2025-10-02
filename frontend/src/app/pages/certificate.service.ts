@@ -17,4 +17,10 @@ export class CertificateService {
   revokeCertificate(serialNumber: string, reason: number): Observable<void> {
     return this.http.post<void>(environment.apiUrl + '/certificates/revoke', { serialNumber, reason });
   }
+  downloadKeystore(serialNumber: string): Observable<Blob> {
+    const url = environment.apiUrl + `/certificates/download/${serialNumber}`;
+    return this.http.get(url, {
+      responseType: 'blob',
+    });
+  }
 }

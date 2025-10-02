@@ -71,7 +71,7 @@ public class CertificateService {
         return projectKeyStore.readCertificateBySerialNumber(serialNumber);
     }
 
-    public List<X509Certificate> findAllByUser(User user) {
+    public List<ProjectKeyStore.CertWithType> findAllByUser(User user) {
         projectKeyStore.loadOrCreate(keystorePath);
         return projectKeyStore.findAllByUser(user);
     }
