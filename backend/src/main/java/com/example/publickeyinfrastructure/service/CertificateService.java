@@ -9,7 +9,6 @@ import com.example.publickeyinfrastructure.model.Role;
 import com.example.publickeyinfrastructure.model.User;
 import com.example.publickeyinfrastructure.repository.CertificateRepository;
 import jakarta.persistence.EntityNotFoundException;
-import org.bouncycastle.asn1.x500.X500Name;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,6 +18,7 @@ import org.springframework.stereotype.Service;
 import java.math.BigInteger;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
+import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.security.PrivateKey;
@@ -63,10 +63,10 @@ public class CertificateService {
         }
     }
 
-    public Optional<Certificate> findBySerialNumber(String serialNumber){
-        return certificateRepository.findBySerialNumber(serialNumber);
+    public Optional<X509Certificate> findBySerialNumber(String serialNumber){
+        projectKeyStore.loadOrCreate(keystorePath);
+        return projectKeyStore.readCertificateBySerialNumber(serialNumber);
     }
-
 
     public List<X509Certificate> findAllByUser(User user) {
         projectKeyStore.loadOrCreate(keystorePath);
@@ -78,34 +78,51 @@ public class CertificateService {
         return projectKeyStore.getCACertificates();
     }
 
-    public boolean checkChain(Certificate certificate) {
-        try {
-            X500Name subjectName = certificate.getSubject().getX500Name();
-            X500Name issuerName = certificate.getIssuer().getX500Name();
-            PrivateKey issuerPrivateKey = projectKeyStore.readPrivateKey(certificate.getIssuer().getOrganization(), certificate.getType().name(), certificate.getSerialNumber()).orElseThrow(() -> new EntityNotFoundException("Private key not found"));
-            if (certificate.getType() == CertificateType.ROOT && subjectName.equals(issuerName)) {
-                certificate.toX509Certificate(issuerPrivateKey).verify(certificate.getSubject().getPublicKey());
-                return true;
+    public List<X509Certificate> findAllUnassignedCACertificates(List<String> serialNumbers) throws KeyStoreException {
+        projectKeyStore.loadOrCreate(keystorePath);
+        return projectKeyStore.findUnassignedCACertificates(serialNumbers);
+    }
+
+    private void checkChain(X509Certificate certificate) throws Exception {
+        X509Certificate currentCert = certificate;
+
+        while (true) {
+            currentCert.checkValidity();
+
+            if (isSelfSigned(currentCert)) {
+                currentCert.verify(currentCert.getPublicKey());
+                break;
             }
 
-            Optional<Certificate> parentOpt = certificateRepository.findBySubject_CommonName(issuerName.toString());
+            X509Certificate finalCurrentCert = currentCert;
+            X509Certificate issuerCert = projectKeyStore.readCertificateBySubjectDN(
+                    currentCert.getIssuerX500Principal().getName()
+            ).orElseThrow(() -> new EntityNotFoundException(
+                    "Issuer certificate not found for " + finalCurrentCert.getSerialNumber()
+            ));
+            currentCert.verify(issuerCert.getPublicKey());
 
-            if (parentOpt.isEmpty()) return false;
+            currentCert = issuerCert;
+        }
+    }
 
-            Certificate parent = parentOpt.get();
-            X509Certificate parentCert = parent.toX509Certificate(issuerPrivateKey);
-
-            if (parent.isDateValid()) return false;
-
-            if (Boolean.TRUE.equals(parent.getIsWithdrawn())) return false;
-
-            parentCert.verify(parent.getSubject().getPublicKey());
-            return checkChain(parent);
+    private boolean isSelfSigned(X509Certificate cert) {
+        try {
+            return cert.getSubjectX500Principal().equals(cert.getIssuerX500Principal())
+                    && verifySelfSigned(cert);
         } catch (Exception e) {
             return false;
         }
     }
 
+    private boolean verifySelfSigned(X509Certificate cert) {
+        try {
+            cert.verify(cert.getPublicKey());
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
 
     public Certificate createCertificate(Certificate request, Role subjectRole, String issuerSerialNumber, CertificateType issuerCertificateType) throws Exception {
         CertificateEntity subject = request.getSubject();
@@ -127,8 +144,8 @@ public class CertificateService {
             X509Certificate issuerX509Certificate = projectKeyStore.readCertificateBySerialNumber(issuerSerialNumber).orElseThrow(() -> new EntityNotFoundException("Certificate not found"));
             Certificate issuerCertificate = projectKeyStore.convertX509ToCertificate(issuerX509Certificate);
             PrivateKey issuerPrivateKey = projectKeyStore.readPrivateKey(issuerCertificate.getSubject().getOrganization(), issuerCertificateType.name(), issuerSerialNumber).orElseThrow(() -> new EntityNotFoundException("Private key not found"));
-            issuerCertificate.getSubject().setPrivateKey(issuerPrivateKey);
-            //todo check issuer
+            if(!request.isDateValid() || request.getExpires().after(issuerCertificate.getExpires()))
+                throw new IllegalArgumentException("Subject's expiration date cannot be after issuer's expiration date");
             request.setIssuer(issuerCertificate.getSubject());
             KeyPair subjectKeyPair = this.generateKeyPair();
             request.getSubject().setPublicKey(subjectKeyPair.getPublic());
@@ -137,6 +154,7 @@ public class CertificateService {
                 throw new IllegalCallerException("You don't have permission for intermediate certificates");
             xCertificate = CertificateGenerator.generateX509Certificate(request, issuerPrivateKey, request.getIssuer().getPublicKey());
         }
+        checkChain(xCertificate);
         request.setSignature(xCertificate.getSignature());
         request.setSerialNumber(xCertificate.getSerialNumber().toString());
         //todo only save to keystore

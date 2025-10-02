@@ -4,6 +4,7 @@ import com.example.publickeyinfrastructure.config.SecurityProperties;
 import com.example.publickeyinfrastructure.model.CertificateEntity;
 import com.example.publickeyinfrastructure.model.Certificate;
 import com.example.publickeyinfrastructure.model.CertificateType;
+import com.example.publickeyinfrastructure.model.Role;
 import com.example.publickeyinfrastructure.model.User;
 import com.example.publickeyinfrastructure.util.ExtensionUtil;
 import org.bouncycastle.asn1.ASN1ObjectIdentifier;
@@ -62,7 +63,7 @@ public class ProjectKeyStore {
                 }
                 logger.info("Initialized new empty keystore");
             }
-            buildTypeIndex(); // Build index after loading
+            buildTypeIndex();
         } catch (Exception e) {
             logger.error("Failed to load or create keystore from {}", keystorePath, e);
             throw new RuntimeException("Failed to load or create keystore", e);
@@ -171,10 +172,10 @@ public class ProjectKeyStore {
             List<X509Certificate> certificates = new ArrayList<>();
             List<String> serialNumbers = user.getCertificateSerialNumbers();
             Enumeration<String> aliases = keyStore.aliases();
+            logger.debug(serialNumbers.toString());
             while (aliases.hasMoreElements()) {
                 String alias = aliases.nextElement();
-                if(true){
-//                if (serialNumbers.contains(alias.split("-")[1]) || user.getRole().equals(Role.ADMIN)){
+                if (serialNumbers.contains(alias.split("-")[1]) ||  user.getRole().equals(Role.ADMIN)){
                     java.security.cert.Certificate cert = keyStore.getCertificate(alias);
                     if (cert instanceof X509Certificate x509Cert) {
                         certificates.add(x509Cert);
@@ -186,6 +187,22 @@ public class ProjectKeyStore {
             logger.error("Failed to read certificate by serialNumber", e);
         }
         return null;
+    }
+
+
+    public List<X509Certificate> findUnassignedCACertificates(List<String> serialNumbers) throws KeyStoreException {
+        List<X509Certificate> result = new ArrayList<>();
+        List<String> intermediateAliases = typeIndex.getOrDefault("intermediate", List.of());
+
+        for (String alias : intermediateAliases) {
+            if (!serialNumbers.contains(alias.split("-")[1])) {
+                java.security.cert.Certificate cert = keyStore.getCertificate(alias);
+                if (cert instanceof X509Certificate x509Cert) {
+                    result.add(x509Cert);
+                }
+            }
+        }
+        return result;
     }
 
     public Optional<X509Certificate> readCertificate(String type, String serialNumber) {
@@ -247,6 +264,38 @@ public class ProjectKeyStore {
         }
     }
 
+    public Optional<X509Certificate> readCertificateBySubjectDN(String subjectDN) {
+        try {
+            Enumeration<String> aliases = keyStore.aliases();
+            while (aliases.hasMoreElements()) {
+                String alias = aliases.nextElement();
+                java.security.cert.Certificate cert = keyStore.getCertificate(alias);
+
+                if (cert instanceof X509Certificate x509Cert) {
+                    String certSubject = x509Cert.getSubjectX500Principal().getName();
+
+                    if (certSubject.equals(subjectDN)) {
+                        Certificate domainCert = convertX509ToCertificate(x509Cert);
+
+                        if (Boolean.TRUE.equals(domainCert.getIsWithdrawn())) {
+                            logger.warn("Certificate with subjectDN={} found but is withdrawn (alias={})", subjectDN, alias);
+                            continue; // skip withdrawn certs
+                        }
+
+                        logger.debug("Found valid certificate for subjectDN={} under alias={}", subjectDN, alias);
+                        return Optional.of(x509Cert);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            logger.error("Failed to read certificate by Subject DN '{}'", subjectDN, e);
+        }
+        return Optional.empty();
+    }
+
+
+
+
     public Certificate convertX509ToCertificate(X509Certificate x509Cert) throws Exception {
         Certificate certificate = new Certificate();
 
@@ -271,7 +320,7 @@ public class ProjectKeyStore {
         issuerEntity.setEmail(getRDN(issuerName, BCStyle.E));
         issuerEntity.setState(getRDN(issuerName, BCStyle.ST));
         issuerEntity.setLocality(getRDN(issuerName, BCStyle.L));
-        issuerEntity.setPublicKey(null); // moraš učitati issuer key posebno
+        issuerEntity.setPublicKey(null);//  must load separately
 
         certificate.setSubject(subjectEntity);
         certificate.setIssuer(issuerEntity);
@@ -313,4 +362,5 @@ public class ProjectKeyStore {
         }
         return password.toCharArray();
     }
+
 }
