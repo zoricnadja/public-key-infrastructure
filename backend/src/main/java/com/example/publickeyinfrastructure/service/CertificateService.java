@@ -6,9 +6,8 @@ import com.example.publickeyinfrastructure.model.Certificate;
 import com.example.publickeyinfrastructure.model.CertificateType;
 import com.example.publickeyinfrastructure.model.CertificateEntity;
 import com.example.publickeyinfrastructure.model.Role;
-import com.example.publickeyinfrastructure.repository.CertificateEntityRepository;
+import com.example.publickeyinfrastructure.model.User;
 import com.example.publickeyinfrastructure.repository.CertificateRepository;
-import com.example.publickeyinfrastructure.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.bouncycastle.asn1.x500.X500Name;
 import org.slf4j.Logger;
@@ -66,6 +65,12 @@ public class CertificateService {
 
     public Optional<Certificate> findBySerialNumber(String serialNumber){
         return certificateRepository.findBySerialNumber(serialNumber);
+    }
+
+
+    public List<X509Certificate> findAllByUser(User user) {
+        projectKeyStore.loadOrCreate(keystorePath);
+        return projectKeyStore.findAllByUser(user);
     }
 
     public Map<CertificateType, List<X509Certificate>> findAllIssuers(){

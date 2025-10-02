@@ -58,6 +58,18 @@ public class CertificateController {
 
     }
 
+    @GetMapping
+    @PreAuthorize("hasAnyRole('ROLE_USER', 'ROLE_ADMIN', 'ROLE_CA_USER')")
+    public ResponseEntity<List<CertificateResponse>> getCertificates(@AuthenticationPrincipal Jwt jwt) {
+        String email = jwt.getClaimAsString("email");
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "User not found with email: " + email));
+
+        List<X509Certificate> certificates = certificateService.findAllByUser(user);
+        return ResponseEntity.ok(certificates.stream().map(certificateMapper::toDto).toList());
+    }
+
     @PostMapping
     @PreAuthorize("hasAnyRole('USER', 'ADMIN', 'CA_USER')")
     public ResponseEntity<CertificateResponse> createCertificate(@RequestBody CreateCertificateRequest request,@AuthenticationPrincipal Jwt jwt) throws Exception {

@@ -4,6 +4,7 @@ import com.example.publickeyinfrastructure.config.SecurityProperties;
 import com.example.publickeyinfrastructure.model.CertificateEntity;
 import com.example.publickeyinfrastructure.model.Certificate;
 import com.example.publickeyinfrastructure.model.CertificateType;
+import com.example.publickeyinfrastructure.model.User;
 import com.example.publickeyinfrastructure.util.ExtensionUtil;
 import org.bouncycastle.asn1.ASN1ObjectIdentifier;
 import org.bouncycastle.asn1.x500.RDN;
@@ -163,6 +164,28 @@ public class ProjectKeyStore {
             logger.error("Failed to read certificate by serialNumber '{}'", serialNumber, e);
         }
         return Optional.empty();
+    }
+
+    public List<X509Certificate> findAllByUser(User user) {
+        try {
+            List<X509Certificate> certificates = new ArrayList<>();
+            List<String> serialNumbers = user.getCertificateSerialNumbers();
+            Enumeration<String> aliases = keyStore.aliases();
+            while (aliases.hasMoreElements()) {
+                String alias = aliases.nextElement();
+                if(true){
+//                if (serialNumbers.contains(alias.split("-")[1]) || user.getRole().equals(Role.ADMIN)){
+                    java.security.cert.Certificate cert = keyStore.getCertificate(alias);
+                    if (cert instanceof X509Certificate x509Cert) {
+                        certificates.add(x509Cert);
+                    }
+                } //todo add for ca and user
+            }
+            return certificates;
+        } catch (KeyStoreException e) {
+            logger.error("Failed to read certificate by serialNumber", e);
+        }
+        return null;
     }
 
     public Optional<X509Certificate> readCertificate(String type, String serialNumber) {
