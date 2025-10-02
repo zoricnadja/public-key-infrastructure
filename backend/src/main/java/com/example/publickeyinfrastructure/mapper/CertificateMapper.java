@@ -1,8 +1,10 @@
 package com.example.publickeyinfrastructure.mapper;
 
+import com.example.publickeyinfrastructure.config.Constants;
 import com.example.publickeyinfrastructure.dto.CertificateResponse;
 import com.example.publickeyinfrastructure.dto.CreateCertificateRequest;
 import com.example.publickeyinfrastructure.model.Certificate;
+import com.example.publickeyinfrastructure.model.CertificateEntity;
 import com.example.publickeyinfrastructure.model.CertificateType;
 import org.bouncycastle.asn1.ASN1ObjectIdentifier;
 import org.bouncycastle.asn1.x500.RDN;
@@ -10,10 +12,15 @@ import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.asn1.x500.style.BCStyle;
 import org.bouncycastle.asn1.x500.style.IETFUtils;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateHolder;
+import org.bouncycastle.openssl.PEMParser;
+import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter;
+import org.bouncycastle.pkcs.PKCS10CertificationRequest;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.io.StringReader;
+import java.security.PublicKey;
 import java.security.cert.X509Certificate;
 
 @Component
@@ -48,6 +55,7 @@ public class CertificateMapper {
 
         return response;
     }
+
     public CertificateResponse toDto(CertificateType type, X509Certificate certificate) {
 
         CertificateResponse response = this.toDto(certificate);
@@ -91,8 +99,30 @@ public class CertificateMapper {
 
     public Certificate toEntity(CreateCertificateRequest request) {
         Certificate certificate = mapper.map(request, Certificate.class);
-        certificate.setSubject(x500NameMapper.toEntity(request.getSubject()));
-        certificate.setExtensions(request.getExtensions().stream().map(extensionMapper::toEntity).toList());
+
+        if (request.getCsrPem() != null && !request.getCsrPem().isBlank()) {
+            try (PEMParser pemParser = new PEMParser(new StringReader(request.getCsrPem()))) {
+                Object obj = pemParser.readObject();
+                if (!(obj instanceof PKCS10CertificationRequest csr)) {
+                    throw new IllegalArgumentException("Invalid CSR provided");
+                }
+
+                X500Name subject = csr.getSubject();
+                PublicKey publicKey = new JcaPEMKeyConverter()
+                        .setProvider(Constants.PROVIDER)
+                        .getPublicKey(csr.getSubjectPublicKeyInfo());
+                CertificateEntity subjectEntity = x500NameMapper.toEntity(subject);
+                subjectEntity.setPublicKey(publicKey);
+
+                certificate.setSubject(subjectEntity);
+                //todo extensions
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to parse CSR", e);
+            }
+        }else{
+            certificate.setSubject(x500NameMapper.toEntity(request.getSubject()));
+            certificate.setExtensions(request.getExtensions().stream().map(extensionMapper::toEntity).toList());
+        }
         return certificate;
     }
 }

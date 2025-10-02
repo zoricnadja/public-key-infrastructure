@@ -3,6 +3,7 @@ package com.example.publickeyinfrastructure.mapper;
 import com.example.publickeyinfrastructure.dto.CertificateEntityDTO;
 import com.example.publickeyinfrastructure.dto.X500NameDTO;
 import com.example.publickeyinfrastructure.model.CertificateEntity;
+import org.bouncycastle.asn1.x500.X500Name;
 import org.modelmapper.ModelMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,6 +24,10 @@ public class X500NameMapper {
     }
 
     public CertificateEntity toEntity(X500NameDTO dto) {
+        return mapper.map(dto, CertificateEntity.class);
+    }
+
+    public CertificateEntity toEntity(X500Name dto) {
         return mapper.map(dto, CertificateEntity.class);
     }
 }
