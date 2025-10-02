@@ -22,7 +22,12 @@ import java.security.*;
 import java.security.cert.CertificateEncodingException;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 @Component
 public class ProjectKeyStore {
@@ -99,7 +104,6 @@ public class ProjectKeyStore {
                 //todo add withdrawal logic
                 if (cert instanceof X509Certificate x509Cert) {
                     result.computeIfAbsent(CertificateType.ROOT, k -> new ArrayList<>()).add(x509Cert);
-
                 }
             }
 
@@ -190,9 +194,9 @@ public class ProjectKeyStore {
         return Optional.empty();
     }
 
-    public List<X509Certificate> findAllByUser(User user) {
+    public List<CertWithType> findAllByUser(User user) {
         try {
-            List<X509Certificate> certificates = new ArrayList<>();
+            List<CertWithType> certificates = new ArrayList<>();
             List<String> serialNumbers = user.getCertificateSerialNumbers();
             Enumeration<String> aliases = keyStore.aliases();
             logger.debug(serialNumbers.toString());
@@ -201,7 +205,7 @@ public class ProjectKeyStore {
                 if (serialNumbers.contains(alias.split("-")[1]) ||  user.getRole().equals(Role.ADMIN)){
                     java.security.cert.Certificate cert = keyStore.getCertificate(alias);
                     if (cert instanceof X509Certificate x509Cert) {
-                        certificates.add(x509Cert);
+                        certificates.add(new CertWithType(x509Cert, CertificateType.valueOf(alias.split("-")[0].toUpperCase())));
                     }
                 } //todo add for ca and user
             }
@@ -212,6 +216,8 @@ public class ProjectKeyStore {
         return null;
     }
 
+    public record CertWithType(X509Certificate cert, CertificateType type){
+    }
 
     public List<X509Certificate> findUnassignedCACertificates(List<String> serialNumbers) throws KeyStoreException {
         List<X509Certificate> result = new ArrayList<>();
@@ -254,6 +260,24 @@ public class ProjectKeyStore {
             logger.error("Failed to read private key for alias '{}'", alias, e);
             return Optional.empty();
         }
+    }
+
+    public Optional<X509Certificate> getCertificateBySerialNumber(String serialNumber) {
+        try {
+            Enumeration<String> aliases = keyStore.aliases();
+            while (aliases.hasMoreElements()) {
+                String alias = aliases.nextElement();
+                java.security.cert.Certificate cert = keyStore.getCertificate(alias);
+                if (cert instanceof X509Certificate x509Cert) {
+                    if (x509Cert.getSerialNumber().toString().equals(serialNumber)) {
+                        return Optional.of(x509Cert);
+                    }
+                }
+            }
+        } catch (KeyStoreException e) {
+            logger.error("Failed to search certificate by serial number '{}'", serialNumber, e);
+        }
+        return Optional.empty();
     }
 
     public Optional<CertificateEntity> readCertificateEntity(String orgId, String type, String serialNumber) {

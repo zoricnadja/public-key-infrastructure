@@ -27,7 +27,7 @@ export interface CreateCertificateRequest {
 }
 
 export interface Certificate {
-  serialNumber?: string;
+  serialNumber: string;
   type?: string;
   issued?: Date;
   expires?: Date;

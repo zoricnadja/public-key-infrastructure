@@ -1,12 +1,19 @@
 package com.example.publickeyinfrastructure;
 
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+import java.security.Security;
 
 @SpringBootApplication
 public class PublicKeyInfrastructureApplication {
 
 	public static void main(String[] args) {
+        if (Security.getProvider(BouncyCastleProvider.PROVIDER_NAME) == null) {
+            Security.addProvider(new BouncyCastleProvider());
+        }
+
 		SpringApplication.run(PublicKeyInfrastructureApplication.class, args);
 	}
 

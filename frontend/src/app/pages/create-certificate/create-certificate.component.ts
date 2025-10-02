@@ -27,7 +27,6 @@ export class CertificateCreateComponent implements OnInit {
     { name: 'SubjectAltName', oid: '2.5.29.17' },
     { name: 'AuthorityKeyIdentifier', oid: '2.5.29.35' },
     { name: 'SubjectKeyIdentifier', oid: '2.5.29.14' },
-    { name: 'CRLDistributionPoints', oid: '2.5.29.31' },
   ];
 
   constructor(

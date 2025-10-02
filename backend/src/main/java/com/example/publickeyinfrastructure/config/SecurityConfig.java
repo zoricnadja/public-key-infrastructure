@@ -1,6 +1,5 @@
 package com.example.publickeyinfrastructure.config;
 
-import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -15,8 +14,6 @@ import org.springframework.security.web.authentication.www.BasicAuthenticationFi
 import com.example.publickeyinfrastructure.security.JwtUserFilter;
 import com.example.publickeyinfrastructure.security.KeycloakRoleConverter;
 
-import java.security.Security;
-
 @Configuration
 @EnableMethodSecurity
 public class SecurityConfig {
@@ -24,11 +21,6 @@ public class SecurityConfig {
     private KeycloakRoleConverter keycloakRoleConverter;
     private JwtUserFilter jwtUserFilter;
 
-    static {
-        if (Security.getProvider("BC") == null) {
-            Security.addProvider(new BouncyCastleProvider());
-        }
-    }
     @Autowired
     public SecurityConfig(KeycloakRoleConverter keycloakRoleConverter, JwtUserFilter jwtUserFilter) {
         this.keycloakRoleConverter = keycloakRoleConverter;
