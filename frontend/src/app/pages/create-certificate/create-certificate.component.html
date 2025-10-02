@@ -1,0 +1,208 @@
+<div class="card p-3">
+  <h3>Generate Certificate</h3>
+
+  <form [formGroup]="form" (ngSubmit)="submit()">
+
+    <!-- Issuer selection -->
+    <div class="mb-3">
+      <label class="form-label">Issuer CA</label>
+      <table class="table table-bordered table-hover">
+        <thead>
+          <tr>
+            <th></th>
+            <th>Serial Number</th>
+            <th>Type</th>
+            <th>Issued</th>
+            <th>Expires</th>
+            <th>Signature Algorithm</th>
+            <th>Subject CN</th>
+            <th>Subject O</th>
+            <th>Subject OU</th>
+            <th>Issuer CN</th>
+            <th>Issuer O</th>
+            <th>Issuer OU</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let cert of caCertificates; let i = index">
+            <td>
+              <input type="radio" [value]="caCertificates[i]" formControlName="issuerCertificateAlias"
+                     [checked]="form.value.issuerCertificateAlias === caCertificates[i]">
+            </td>
+            <td>{{ cert.serialNumber }}</td>
+            <td>{{ cert.type }}</td>
+            <td>{{ cert.issued | date:'yyyy-MM-dd' }}</td>
+            <td>{{ cert.expires | date:'yyyy-MM-dd' }}</td>
+            <td>{{ cert.signatureAlgorithm }}</td>
+            <td>{{ cert.subjectCN }}</td>
+            <td>{{ cert.subjectO }}</td>
+            <td>{{ cert.subjectOU }}</td>
+            <td>{{ cert.issuerCN }}</td>
+            <td>{{ cert.issuerO }}</td>
+            <td>{{ cert.issuerOU }}</td>
+          </tr>
+        </tbody>
+      </table>
+      <button type="button" class="btn btn-sm btn-outline-secondary ms-1"
+              (click)="form.get('issuerCertificateAlias')?.setValue(null)">Remove issuer</button>
+
+      <div *ngIf="form.get('issuerCertificateAlias')?.invalid && (form.get('issuerCertificateAlias')?.touched || form.get('issuerCertificateAlias')?.dirty)" class="text-danger">
+        Please select issuer
+      </div>
+    </div>
+
+    <!-- Certificate type -->
+    <div class="mb-3">
+      <label for="type" class="form-label">Certificate Type</label>
+      <select id="type" class="form-select" formControlName="type">
+        <option *ngIf="isAdmin" value="ROOT">ROOT</option>
+        <option *ngIf="isAdmin || isCA" value="INTERMEDIATE">INTERMEDIATE</option>
+        <option value="END_ENTITY">END ENTITY</option>
+      </select>
+      <div *ngIf="form.get('type')?.invalid && (form.get('type')?.touched || form.get('type')?.dirty)" class="text-danger">
+        Certificate type is required.
+      </div>
+    </div>
+
+    <!-- Subject -->
+    <h5>Subject (owner)</h5>
+    <div formGroupName="subject">
+      <div class="row mb-2">
+        <div class="col">
+          <label>Common Name (CN)</label>
+          <input class="form-control" formControlName="commonName">
+          <div *ngIf="form.get('subject.commonName')?.invalid && (form.get('subject.commonName')?.touched || form.get('subject.commonName')?.dirty)" class="text-danger">
+            Common Name is required.
+          </div>
+        </div>
+        <div class="col">
+          <label>Organization (O)</label>
+          <input class="form-control" formControlName="organization">
+          <div *ngIf="form.get('subject.organization')?.invalid && (form.get('subject.organization')?.touched || form.get('subject.organization')?.dirty)" class="text-danger">
+            Organization is required.
+          </div>
+        </div>
+      </div>
+
+      <div class="row mb-2">
+        <div class="col">
+          <label>Organizational Unit (OU)</label>
+          <input class="form-control" formControlName="organizationalUnit">
+          <div *ngIf="form.get('subject.organizationalUnit')?.invalid && (form.get('subject.organizationalUnit')?.touched || form.get('subject.organizationalUnit')?.dirty)" class="text-danger">
+            Organizational Unit is required.
+          </div>
+        </div>
+        <div class="col">
+          <label>Country (C)</label>
+          <input class="form-control" formControlName="country" maxlength="2">
+          <div *ngIf="form.get('subject.country')?.invalid && (form.get('subject.country')?.touched || form.get('subject.country')?.dirty)" class="text-danger">
+            Country is required and must be 2 letters.
+          </div>
+        </div>
+      </div>
+
+      <div class="row mb-2">
+        <div class="col">
+          <label>State (ST)</label>
+          <input class="form-control" formControlName="state">
+          <div *ngIf="form.get('subject.state')?.invalid && (form.get('subject.state')?.touched || form.get('subject.state')?.dirty)" class="text-danger">
+            State is required.
+          </div>
+        </div>
+        <div class="col">
+          <label>Locality (L)</label>
+          <input class="form-control" formControlName="locality">
+          <div *ngIf="form.get('subject.locality')?.invalid && (form.get('subject.locality')?.touched || form.get('subject.locality')?.dirty)" class="text-danger">
+            Locality is required.
+          </div>
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <label>Email</label>
+        <input class="form-control" formControlName="email">
+        <div *ngIf="form.get('subject.email')?.invalid && (form.get('subject.email')?.touched || form.get('subject.email')?.dirty)" class="text-danger">
+          <span *ngIf="form.get('subject.email')?.errors?.['required']">Email is required.</span>
+          <span *ngIf="form.get('subject.email')?.errors?.['email']">Invalid email format.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Validity -->
+    <h5>Validity</h5>
+    <div class="row mb-3">
+      <div class="col">
+        <label>Issued</label>
+        <input type="date" class="form-control" formControlName="issued">
+        <div *ngIf="form.get('issued')?.invalid && (form.get('issued')?.touched || form.get('issued')?.dirty)" class="text-danger">
+          Issued date is required and must be in the future.
+        </div>
+      </div>
+      <div class="col">
+        <label>Expires</label>
+        <input type="date" class="form-control" formControlName="expires">
+        <div *ngIf="form.get('expires')?.invalid && (form.get('expires')?.touched || form.get('expires')?.dirty)" class="text-danger">
+          Expiration date is required and must be in the future.
+        </div>
+      </div>
+    </div>
+
+    <!-- Extensions -->
+    <h5>Extensions</h5>
+    <div class="mb-2">
+      <label>Add common extension:</label>
+      <div class="btn-group ms-2">
+        <button type="button" class="btn btn-outline-secondary"
+                *ngFor="let e of commonExtensions" (click)="addCommonExtension(e)">
+          {{ e.name }}
+        </button>
+      </div>
+    </div>
+
+    <div formArrayName="extensions">
+      <div *ngFor="let ext of extensions.controls; index as i" [formGroupName]="i" class="card mb-2 p-2">
+        <div class="d-flex align-items-center">
+          <div class="flex-grow-1">
+            <div class="row g-2">
+              <div class="col-3">
+                <label>OID</label>
+                <input class="form-control" formControlName="oid">
+              </div>
+              <div class="col-3">
+                <label>Name</label>
+                <input class="form-control" formControlName="name">
+              </div>
+              <div class="col-2">
+                <label>Critical</label>
+                <select class="form-select" formControlName="isCritical">
+                  <option [value]="true">true</option>
+                  <option [value]="false">false</option>
+                </select>
+              </div>
+              <div class="col-4">
+                <label>Value</label>
+                <input type="text" class="form-control" formControlName="value">
+              </div>
+            </div>
+          </div>
+          <div class="ms-2">
+            <button type="button" class="btn btn-danger btn-sm" (click)="removeExtension(i)">Remove</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Submit -->
+    <div class="mt-3">
+      <button class="btn btn-primary" type="submit" [disabled]="saving">Generate</button>
+    </div>
+
+    <!-- Result / Error -->
+    <div *ngIf="result" class="alert alert-success mt-3">
+      Created: {{ result?.serialNumber || result?.id }}
+    </div>
+    <div *ngIf="error" class="alert alert-danger mt-3">
+      {{ error }}
+    </div>
+  </form>
+</div>

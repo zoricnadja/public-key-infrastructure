@@ -1,0 +1,53 @@
+<div class="card p-3">
+  <h3>Assign Certificate to CA User</h3>
+  <div *ngIf="!isAdmin" class="alert alert-danger">Access denied. Admins only.</div>
+  <div *ngIf="loading && isAdmin" class="alert alert-info">Loading certificates...</div>
+  <div *ngIf="error && isAdmin" class="alert alert-danger">{{ error }}</div>
+  <table *ngIf="!loading && isAdmin && certificates.length" class="table table-bordered table-hover">
+    <thead>
+      <tr>
+        <th>Serial Number</th>
+        <th>Type</th>
+        <th>Issued</th>
+        <th>Expires</th>
+        <th>Signature Algorithm</th>
+        <th>Subject CN</th>
+        <th>Subject O</th>
+        <th>Subject OU</th>
+        <th>Issuer CN</th>
+        <th>Issuer O</th>
+        <th>Issuer OU</th>
+        <th>Assign to CA User</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let cert of certificates">
+        <td>{{ cert.serialNumber }}</td>
+        <td>{{ cert.type }}</td>
+        <td>{{ cert.issued | date:'yyyy-MM-dd' }}</td>
+        <td>{{ cert.expires | date:'yyyy-MM-dd' }}</td>
+        <td>{{ cert.signatureAlgorithm }}</td>
+        <td>{{ cert.subjectCN }}</td>
+        <td>{{ cert.subjectO }}</td>
+        <td>{{ cert.subjectOU }}</td>
+        <td>{{ cert.issuerCN }}</td>
+        <td>{{ cert.issuerO }}</td>
+        <td>{{ cert.issuerOU }}</td>
+        <td>
+            <select #userSelect class="form-select">
+                <option value="">Select user</option>
+                <option *ngFor="let user of users" [value]="user.id">
+                {{ user.id }} - {{ user.firstName }} {{ user.lastName }}
+                </option>
+            </select>
+            <button 
+                class="btn btn-success btn-sm mt-1" 
+                (click)="assignToUser(cert.serialNumber, userSelect.value)">
+                Assign
+            </button>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+  <div *ngIf="!loading && isAdmin && !certificates.length" class="alert alert-warning">No certificates found.</div>
+</div>
