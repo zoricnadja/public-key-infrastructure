@@ -125,8 +125,6 @@ public class CertificateService {
     }
 
     public Certificate createCertificate(Certificate request, Role subjectRole, String issuerSerialNumber, CertificateType issuerCertificateType) throws Exception {
-        CertificateEntity subject = request.getSubject();
-        request.setSubject(subject);
         request.setSignatureAlgorithm(Constants.SIGNATURE_ALGORITHM);
         BigInteger serial = new BigInteger(128, new SecureRandom());
         request.setSerialNumber(serial.toString(16).toUpperCase());
@@ -138,14 +136,16 @@ public class CertificateService {
                 createRootCertificateEntities(request);
                 xCertificate = CertificateGenerator.generateX509Certificate(request, request.getSubject().getPrivateKey(), request.getSubject().getPublicKey());
             }
-            else
+            else {
                 throw new IllegalArgumentException("You don't have permission to create Root CA Certificate");
+            }
         } else {
             X509Certificate issuerX509Certificate = projectKeyStore.readCertificateBySerialNumber(issuerSerialNumber).orElseThrow(() -> new EntityNotFoundException("Certificate not found"));
             Certificate issuerCertificate = projectKeyStore.convertX509ToCertificate(issuerX509Certificate);
             PrivateKey issuerPrivateKey = projectKeyStore.readPrivateKey(issuerCertificate.getSubject().getOrganization(), issuerCertificateType.name(), issuerSerialNumber).orElseThrow(() -> new EntityNotFoundException("Private key not found"));
-            if(!request.isDateValid() || request.getExpires().after(issuerCertificate.getExpires()))
+            if(!request.isDateValid() || request.getExpires().after(issuerCertificate.getExpires())) {
                 throw new IllegalArgumentException("Subject's expiration date cannot be after issuer's expiration date");
+            }
             request.setIssuer(issuerCertificate.getSubject());
             if (request.getSubject().getPublicKey() == null) {
                 KeyPair subjectKeyPair = this.generateKeyPair();
@@ -177,7 +177,6 @@ public class CertificateService {
                     request.getSubject().getOrganization()
             );
         }
-        projectKeyStore.writeKeyEntry(request.getType().name(), String.format(request.getSerialNumber()), request.getSubject().getPrivateKey(), xCertificate, request.getSubject().getOrganization());
         projectKeyStore.save(keystorePath);
         return request;
     }
