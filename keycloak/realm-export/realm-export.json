@@ -762,18 +762,18 @@
       "clientId": "pki-frontend",
       "name": "",
       "description": "",
-      "rootUrl": "http://localhost:4200",
-      "adminUrl": "http://localhost:4200",
-      "baseUrl": "http://localhost:4200",
+      "rootUrl": "https://localhost:4200",
+      "adminUrl": "https://localhost:4200",
+      "baseUrl": "https://localhost:4200",
       "surrogateAuthRequired": false,
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
       "redirectUris": [
-        "http://localhost:4200/*"
+        "https://localhost:4200/*"
       ],
       "webOrigins": [
-        "http://localhost:4200"
+        "https://localhost:4200"
       ],
       "notBefore": 0,
       "bearerOnly": false,
