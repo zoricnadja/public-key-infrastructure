@@ -75,9 +75,7 @@
             },
             "development": {
               "buildTarget": "public-key-infrastructure:build:development",
-              "ssl": true,
-              "sslKey": "./certs/localhost.key",
-              "sslCert": "./certs/localhost.crt"
+              "ssl": true
             }
           },
           "defaultConfiguration": "development"

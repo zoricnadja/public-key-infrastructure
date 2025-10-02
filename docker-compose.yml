@@ -13,8 +13,8 @@ services:
     depends_on:
       backend:
         condition: service_healthy
-      keycloak:
-        condition: service_healthy
+#      keycloak:
+#        condition: service_healthy
 
   backend:
     container_name: backend-pki
@@ -34,11 +34,13 @@ services:
       - SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD}
       - SPRING_KEYCLOAK_AUTH_SERVER_URL=${SPRING_KEYCLOAK_AUTH_SERVER_URL}
       - KEYCLOAK_SERVICE_NAME=${KEYCLOAK_SERVICE_NAME}
+      - SECURITY_KEYSTORE_PASSWORD=${KEYSTORE_PASSWORD}
+      - SECURITY_ENCRYPTION_PASSPHRASE=${ENCRYPTION_PASSPHRASE}
     depends_on:
       db:
         condition: service_healthy
-      keycloak:
-        condition: service_healthy
+#      keycloak:
+#        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "[ -f /tmp/healthy ] || (wget --spider --quiet localhost:8080/actuator/health && touch /tmp/healthy)"]
       interval: 10s
@@ -97,7 +99,7 @@ services:
     command:
       - start-dev
       - --import-realm
-      - --https-key-store-file=/opt/keycloak/conf/keycloak-keystore.p12
+      - --https-key-store-file=/opt/keycloak/conf/keycloak.p12
       - --https-key-store-password=password
     ports:
       - "8081:8080"
@@ -119,15 +121,10 @@ services:
     volumes:
       - ./keycloak/realm-export:/opt/keycloak/data/import
       - ./keycloak/providers:/opt/keycloak/providers
-      - ./keycloak/keycloak-keystore.p12:/opt/keycloak/conf/keycloak-keystore.p12
+      - ./keycloak/keycloak.p12:/opt/keycloak/conf/keycloak.p12
     depends_on:
       keycloak-db:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8080/health/live || exit 1"]
-      interval: 15s
-      timeout: 5s
-      retries: 5
 
 volumes:
   postgres-data:
