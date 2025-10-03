@@ -87,7 +87,24 @@ public class CertificateService {
     }
 
     public boolean isRevoked(X509Certificate certificate) {
-        return revokedCertificateRepository.existsBySerialNumber(certificate.getSerialNumber().toString());
+        X509Certificate currentCert = certificate;
+        projectKeyStore.loadOrCreate(keystorePath);
+        while (true) {
+            if (revokedCertificateRepository.existsBySerialNumber(currentCert.getSerialNumber().toString())) {
+                return true;
+            }
+            if (isSelfSigned(currentCert)) {
+                break;
+            }
+            X509Certificate issuerCert = projectKeyStore.readCertificateBySubjectDN(
+                    currentCert.getIssuerX500Principal().getName()
+            ).orElse(null);
+            if (issuerCert == null) {
+                break;
+            }
+            currentCert = issuerCert;
+        }
+        return false;
     }
 
     private void checkChain(X509Certificate certificate) throws Exception {
@@ -96,13 +113,13 @@ public class CertificateService {
         while (true) {
             currentCert.checkValidity();
 
+            if (revokedCertificateRepository.existsBySerialNumber(currentCert.getSerialNumber().toString())) {
+                throw new SecurityException("Certificate with serial number " + currentCert.getSerialNumber() + " is revoked.");
+            }
+
             if (isSelfSigned(currentCert)) {
                 currentCert.verify(currentCert.getPublicKey());
                 break;
-            }
-
-            if (revokedCertificateRepository.existsBySerialNumber(currentCert.getSerialNumber().toString())) {
-                throw new SecurityException("Certificate with serial number " + currentCert.getSerialNumber() + " is revoked.");
             }
 
             X509Certificate finalCurrentCert = currentCert;

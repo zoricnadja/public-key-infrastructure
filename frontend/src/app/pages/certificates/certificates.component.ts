@@ -76,7 +76,7 @@ export class CertificatesComponent implements OnInit {
         this.fetchCertificates();
       },
       error: (err) => {
-        this.error = err?.error?.message || err?.message || 'Failed to revoke certificate';
+        // this.error = err?.error?.message || err?.message || 'Failed to revoke certificate';
         this.loading = false;
       }
     });

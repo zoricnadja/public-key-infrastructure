@@ -42,7 +42,7 @@ services:
 #      keycloak:
 #        condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "[ -f /tmp/healthy ] || (wget --spider --quiet localhost:8080/actuator/health && touch /tmp/healthy)"]
+      test: ["CMD-SHELL", "[ -f /tmp/healthy ] || (wget --spider --quiet --no-check-certificate https://localhost:8080/actuator/health && touch /tmp/healthy)"]
       interval: 10s
       timeout: 5s
       retries: 3

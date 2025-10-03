@@ -55,6 +55,7 @@ public class CertificateController {
         this.userService = userService;
         this.revocationService = revocationService;
         this.certificateExportService = certificateExportService;
+    }
 
 
     @GetMapping("/issuers")
@@ -70,6 +71,7 @@ public class CertificateController {
         return ResponseEntity.ok(
                 caCertificates.entrySet().stream()
                         .flatMap(entry -> entry.getValue().stream()
+                                .filter(cert -> !certificateService.isRevoked(cert))
                                 .map(cert -> certificateMapper.toDto(entry.getKey(), cert)))
                         .toList()
         );
@@ -85,6 +87,7 @@ public class CertificateController {
                         "User not found with email: " + email));
 
         List<X509Certificate> certificates = certificateService.findAllByUser(user).stream()
+                .map(ProjectKeyStore.CertWithType::cert)
                 .filter(cert -> !certificateService.isRevoked(cert))
                 .toList();
         return ResponseEntity.ok(certificates.stream().map(certificateMapper::toDto).toList());
